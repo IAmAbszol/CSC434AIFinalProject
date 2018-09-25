@@ -1,8 +1,10 @@
 #initialize the screen
 import pygame, math, sys, level2, time
+import random
 from pygame.locals import *
 
 def level1():
+    i = 0
     pygame.init()
     screen = pygame.display.set_mode((1024, 768))
     #GAME CLOCK
@@ -49,29 +51,17 @@ def level1():
             self.rect.center = self.position
 
     class PadSprite(pygame.sprite.Sprite):
-        normal = pygame.image.load('images/race_pads.png')
-        hit = pygame.image.load('images/collision.png')
-        def __init__(self, position):
+        def __init__(self, image, position):
             super(PadSprite, self).__init__()
+            normal = pygame.image.load(image)
+            hit = pygame.image.load('images/collision.png')
             self.rect = pygame.Rect(self.normal.get_rect())
             self.rect.center = position
         def update(self, hit_list):
             if self in hit_list: self.image = self.hit
             else: self.image = self.normal
+    # PadSprite('images/race_pads.png', (0,0))
     pads = [
-        PadSprite((0, 10)),
-        PadSprite((600, 10)),
-        PadSprite((1100, 10)),
-        PadSprite((100, 150)),
-        PadSprite((600, 150)),
-        PadSprite((100, 300)),
-        PadSprite((800, 300)),
-        PadSprite((400, 450)),
-        PadSprite((700, 450)),
-        PadSprite((200, 600)),
-        PadSprite((900, 600)),
-        PadSprite((400, 750)),
-        PadSprite((800, 750)),
     ]
     pad_group = pygame.sprite.RenderPlain(*pads)
 
@@ -84,13 +74,14 @@ def level1():
         def draw(self, screen):
             screen.blit(self.image, self.rect)
 
-    trophies = [Trophy((285,0))]
+    trophies = [Trophy((285,500))]
     trophy_group = pygame.sprite.RenderPlain(*trophies)
 
     # CREATE A CAR AND RUN
     rect = screen.get_rect()
-    car = CarSprite('images/car.png', (10, 730))
-    car_group = pygame.sprite.RenderPlain(car)
+    cars = [CarSprite('images/car.png',((10 * (i + 1) + (20 * i)), 730)) for i in range(10)]
+    #car = CarSprite('images/car.png', (10, 730))
+    car_group = pygame.sprite.RenderPlain(*cars)
 
     #THE GAME LOOP
     while 1:
@@ -102,12 +93,26 @@ def level1():
         for event in pygame.event.get():
             if not hasattr(event, 'key'): continue
             down = event.type == KEYDOWN 
-            if win_condition == None: 
+            if win_condition == None:
+                if event.key == K_BACKSPACE:
+                    for i in range(len(cars)):
+                        dir = 2
+                        if dir == 0:
+                            cars[i].k_right = down * -5
+                        elif dir == 1:
+                            cars[i].k_left = down * 5
+                        elif dir == 2:
+                            cars[i].k_up = down * 2
+                        else:
+                            cars[i].k_down = down * -2
+                elif event.key == K_ESCAPE: sys.exit(0)
+                """
                 if event.key == K_RIGHT: car.k_right = down * -5 
                 elif event.key == K_LEFT: car.k_left = down * 5
                 elif event.key == K_UP: car.k_up = down * 2
                 elif event.key == K_DOWN: car.k_down = down * -2 
                 elif event.key == K_ESCAPE: sys.exit(0) # quit the game
+                """
             elif win_condition == True and event.key == K_SPACE: level2.level2()
             elif win_condition == False and event.key == K_SPACE: 
                 level1()
@@ -129,28 +134,25 @@ def level1():
         car_group.update(deltat)
         collisions = pygame.sprite.groupcollide(car_group, pad_group, False, False, collided = None)
         if collisions != {}:
-            win_condition = False
-            timer_text = font.render("Crash!", True, (255,0,0))
-            car.image = pygame.image.load('images/collision.png')
-            loss_text = win_font.render('Press Space to Retry', True, (255,0,0))
-            seconds = 0
-            car.MAX_FORWARD_SPEED = 0
-            car.MAX_REVERSE_SPEED = 0
-            car.k_right = 0
-            car.k_left = 0
+            for car in collisions:
+                car_group.remove(car)
+            if len(car_group) == 0:
+                win_condition = False
 
         trophy_collision = pygame.sprite.groupcollide(car_group, trophy_group, False, True)
         if trophy_collision != {}:
-            seconds = seconds
-            timer_text = font.render("Finished!", True, (0,255,0))
-            win_condition = True
-            car.MAX_FORWARD_SPEED = 0
-            car.MAX_REVERSE_SPEED = 0
-            pygame.mixer.music.play(loops=0, start=0.0)
-            win_text = win_font.render('Press Space to Advance', True, (0,255,0))
-            if win_condition == True:
-                car.k_right = -5
-                
+            for car in trophy_collision:
+                car_group.empty()
+                car_group.add(car)
+                seconds = seconds
+                timer_text = font.render("Finished!", True, (0,255,0))
+                win_condition = True
+                car.MAX_FORWARD_SPEED = 0
+                car.MAX_REVERSE_SPEED = 0
+                pygame.mixer.music.play(loops=0, start=0.0)
+                win_text = win_font.render('Press Space to Advance', True, (0,255,0))
+                if win_condition == True:
+                    car.k_right = -5
 
         pad_group.update(collisions)
         pad_group.draw(screen)
@@ -161,5 +163,4 @@ def level1():
         screen.blit(win_text, (250, 700))
         screen.blit(loss_text, (250, 700))
         pygame.display.flip()
-
 
