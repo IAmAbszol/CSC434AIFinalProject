@@ -3,6 +3,7 @@ import pygame, math, sys, level2, time
 import random
 from pygame.locals import *
 
+# Create game
 def level1():
     i = 0
     pygame.init()
