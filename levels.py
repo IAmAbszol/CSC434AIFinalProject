@@ -3,18 +3,18 @@ import pygame
 """
     levels.py
     Houses all possible levels for the game to choose from.
-    
+
     Selection occurs by invoking the selected level
     and by having a return tuple of (pad_sprite, trophies, car[x,y]).
-    
+
     Must still be rendered into the main game.
 """
 
 class PadSprite(pygame.sprite.Sprite):
     def __init__(self, image, position):
         super(PadSprite, self).__init__()
-        normal = pygame.image.load(image)
-        hit = pygame.image.load('images/collision.png')
+        self.normal = pygame.image.load(image)
+        self.hit = pygame.image.load('images/collision.png')
         self.rect = pygame.Rect(self.normal.get_rect())
         self.rect.center = position
 

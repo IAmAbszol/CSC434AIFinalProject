@@ -1,10 +1,9 @@
 #initialize the screen
 import pygame, math, sys, level2, time
-import random
 from pygame.locals import *
 
-from ai import genetic
-from ai import network
+#from ai import genetic
+#from ai import network
 import levels
 
 class CarSprite(pygame.sprite.Sprite):
@@ -49,26 +48,14 @@ def load_level():
     loss_text = font.render('', True, (255, 0, 0))
     pygame.mixer.music.load('My_Life_Be_Like.mp3')
     t0 = time.time()
+    pads, trophies, car_pos = levels.level1()
 
-
-
-def level1():
-    i = 0
-    pygame.init()
-    screen = pygame.display.set_mode((1024, 768))
-    #GAME CLOCK
-    clock = pygame.time.Clock()
-    font = pygame.font.Font(None, 75)
-    win_font = pygame.font.Font(None, 50)
-    win_condition = None
-    win_text = font.render('', True, (0, 255, 0))
-    loss_text = font.render('', True, (255, 0, 0))
-    pygame.mixer.music.load('My_Life_Be_Like.mp3')
-    t0 = time.time()
+    pad_group = pygame.sprite.RenderPlain(*pads)
+    trophy_group = pygame.sprite.RenderPlain(*trophies)
 
     # CREATE A CAR AND RUN
     rect = screen.get_rect()
-    cars = [CarSprite('images/car.png',((10 * (i + 1) + (20 * i)), 730)) for i in range(10)]
+    cars = [CarSprite('images/car.png',car_pos) for i in range(10)]
     #car = CarSprite('images/car.png', (10, 730))
     car_group = pygame.sprite.RenderPlain(*cars)
 
@@ -104,7 +91,7 @@ def level1():
                 """
             elif win_condition == True and event.key == K_SPACE: level2.level2()
             elif win_condition == False and event.key == K_SPACE: 
-                level1()
+                load_level()
                 t0 = t1
             elif event.key == K_ESCAPE: sys.exit(0)    
     
