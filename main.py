@@ -1,5 +1,5 @@
 #initialize the screen
-import pygame, math, sys, level2, time
+import pygame, math, sys, time
 from pygame.locals import *
 
 #from ai import genetic
@@ -89,7 +89,8 @@ def load_level():
                 elif event.key == K_DOWN: car.k_down = down * -2 
                 elif event.key == K_ESCAPE: sys.exit(0) # quit the game
                 """
-            elif win_condition == True and event.key == K_SPACE: level2.level2()
+                # Change levels.level2 to some array that locks it
+            elif win_condition == True and event.key == K_SPACE: levels.level2()
             elif win_condition == False and event.key == K_SPACE: 
                 load_level()
                 t0 = t1
