@@ -27,4 +27,38 @@ The capstone project using Artificially Intelligent systems.
 	</tr>
 </table>
 
+<h3>main.py</h3>
+<table>
+	<tr>
+		<th>Order #</th>
+		<th>Instruction</th>
+		<th>Description</th>
+	</tr>
+	<tr>
+		<th>0.</th>
+		<th>Initialize main.py.</th>
+		<th>Create the main container, houses algorithmic structure.</th>
+	</tr>
+	<tr>
+		<th>1.</th>
+		<th>Load level.</th>
+		<th>Level chosen is based on level order selected, randomized each time main.py is initialized.<th>
+	</tr>
+	<tr>
+		<th>2.</th>
+		<th>Initialize Genetic Algorithm approach.</th>
+		<th>Creates the genetic algorithm based on desired pool size (cars) and passes in Neural Network (individual for each car).</th>
+	</tr>
+	<tr>
+		<th>3.</th>
+		<th>Call genetic algorithm creation function.<th/>
+		<th>Calls construct within genetic algorithm that either creates/mutates/crossover best car candidate. Creation is top priority if cars have no set genes.</th>
+	</tr>
+	<tr>
+		<th>4.</th>
+		<th>Retrieve cars generated.</th>
+		<th>Cars generated from previous creation are gathered and spawned into the level.</th>
+	</tr>
+</table>
+
 
