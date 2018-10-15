@@ -9,7 +9,8 @@ while 1:
     for event in pygame.event.get():
                 if not hasattr(event, 'key'): continue
                 if event.key == K_SPACE: 
-                    main.level1()
+                    main_game = main.Main()
+                    main_game.run_level()
                 elif event.key == K_ESCAPE: sys.exit(0)  
     img = pygame.image.load("images/main_menu_image.png")
     screen.blit(img,(0,0))
