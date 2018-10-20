@@ -62,7 +62,7 @@ def level1():
         PadSprite('images/race_pads.png', (500, 768))
     ]
 
-    trophies = [Trophy((285, 0))]
+    trophies = [Trophy((285, 10))]
 
     return pads, trophies, (35, 730)
 

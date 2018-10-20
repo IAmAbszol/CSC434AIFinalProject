@@ -16,7 +16,7 @@ from bisect import bisect_left
 
 from ai import network
 
-INPUT = 7
+INPUT = 8
 HIDDEN = 32
 OUTPUT = 4
 
@@ -27,37 +27,52 @@ def frange(x, y, jump):
         x += jump
 
 
+def euclidean(dx, dy):
+    return np.sqrt((dx[1] - dx[0]) ** 2 + (dy[1] - dy[0]) ** 2)
+
 class GeneticAlgorithm:
 
     def __init__(self, pool_size=10):
         self.pool = pool_size
+        self.crossover_pool = 5
         self.first_run = True
         self.parent = self.bestParent = 0
-        self.participant_pool = []
         self.strategy_pool = ["Create", "Mutate", "Crossover"]
         # takes ~13 seconds on testing system. Called once per class creation
         self.Geneset = list(frange(-1, 1, .0001))
         self.Genelength = (INPUT * HIDDEN) + (HIDDEN * OUTPUT)
+        self.maxAge = 5
+
+        self.startTime = 0
+        self.parents = []
+        self.historicalFitnesses = []
+        self.lastParentIndex = self.crossover_pool - 1
+        self.pIndex = 1
+
+    def _display(self, candidate):
+        print("{}-Strategy: {}-{}".format(candidate.Genes, candidate.Strategy, (datetime.datetime.now() - self.startTime)))
 
     def _crossover(self, participant_a, participant_b):
+        child = self.Chromosome(0, 0, "Crossover")
         childGenes = []
         for i in range(len(participant_a.Genes)):
             if random.uniform(0, 1) > 0.5:
                 childGenes.append(participant_b.Genes[i])
             else:
                 childGenes.append((participant_a.Genes[i]))
-        childGenes.Strategy = "Crossover"
-        return childGenes
+        child.Genes = childGenes
+        return child
 
     def _mutate(self, participant, geneset):
+        child = self.Chromosome(0, 0, "Mutate")
         childGenes = tmpGenes = participant.Genes[:]
         for gene in range(len(tmpGenes)):
             tmpGenes[gene] = geneset[random.randrange(0, len(geneset))]
         for i in range(0, len(childGenes)):
             if random.uniform(0, 1) > 0.6:
                 childGenes[i] = tmpGenes[i]
-        childGenes.Strategy = "Mutate"
-        return childGenes
+        child.Genes = childGenes
+        return child
 
     def _create(self, length, geneset):
         participant = self.Chromosome([0 for x in range(length)], 0, "Create")
@@ -78,18 +93,62 @@ class GeneticAlgorithm:
                     yield self.CarSprite("images/car.png", car_pos, self._mutate(self.parent, self.Geneset))
                 elif strategy is "Crossover":
                     yield self.CarSprite("images/car.png", car_pos, self._crossover(
-                        self.participant_pool[random.randrange(0, len(self.participant_pool))],
-                        self.participant_pool[random.randrange(0, len(self.participant_pool))]))
+                        self.parents[random.randrange(0, len(self.parents))],
+                        self.parents[random.randrange(0, len(self.parents))]))
 
     # parameters required such as distance, etc. Possibly capture within car?
     def get_fitness(self, participants, data):
         for participant in participants:
-            print("Car data -> {}\nTrophy X, Y -> P{}".format(participant.get_car_data(), data))
+            print(participant.distance)
+            #print("Car data -> {}\nTrophy X, Y -> P{}".format(participant.get_car_data(), data))
 
     def evaluate_performance(self, participants, data):
         self.get_fitness(participants, data)
-        exit(0)
-        self.first_run = False
+        participants_genes = [i.Chromosome for i in participants]
+        sorted_participants = sorted(participants_genes, reverse=True)
+        if self.first_run:
+            self.startTime = datetime.datetime.now()
+            self.bestParent = self._create(self.Genelength, self.Geneset)
+            self.parents = [self.bestParent]
+            self.historicalFitnesses = [self.bestParent.Fitness]
+
+            # evaluate first run candidates/participants
+            for _ in range(self.crossover_pool - 1):
+                if _ < len(sorted_participants):
+                    if sorted_participants[_].Fitness > self.bestParent.Fitness:
+                        self.bestParent = sorted_participants[_]
+                        self.historicalFitnesses.append(self.bestParent.Fitness)
+                self.parents.append(sorted_participants[_])
+            self.first_run = False
+
+        self.pIndex = self.pIndex - 1 if self.pIndex > 0 else self.lastParentIndex
+        self.parent = self.parents[self.pIndex]
+        child = sorted_participants[0]
+        if self.parent.Fitness > child.Fitness:
+            if self.maxAge is None:
+                return
+            self.parent.Age += 1
+            if self.maxAge > self.parent.Age:
+                return
+            index = bisect_left(self.historicalFitnesses, child.Fitness, 0,
+                                len(self.historicalFitnesses))
+            difference = len(self.historicalFitnesses) - index
+            proportionSimilar = difference / len(self.historicalFitnesses)
+            if random.random() < math.exp(-proportionSimilar):
+                self.parents[self.pindex] = child
+                return
+            self.bestParent.Age = 0
+            self.parents[self.pIndex] = self.bestParent
+            return
+        if not child.Fitness > self.parent.Fitness:
+            child.Age = self.parent.Age + 1
+            self.parents[self.pIndex] = child
+            return
+        child.Age = 0
+        self.parents[self.pIndex] = child
+        if child.Fitness > self.bestParent.Fitness:
+            self.bestParent = child
+            self.historicalFitnesses.append(self.bestParent.Fitness)
 
     class CarSprite(pygame.sprite.Sprite):
 
@@ -122,7 +181,7 @@ class GeneticAlgorithm:
             cur_y = y
             x += -self.speed * math.sin(rad)
             y += -self.speed * math.cos(rad)
-            self.distance += np.sqrt((x - cur_x) ** 2 + (y - cur_y) ** 2)
+            self.distance += euclidean((cur_x, x), (cur_y, y))
             self.position = (x, y)
             self.image = pygame.transform.rotate(self.src_image, self.direction)
             self.rect = self.image.get_rect()

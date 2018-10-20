@@ -14,19 +14,45 @@ class Main():
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 75)
         self.win_font = pygame.font.Font(None, 50)
-        self.win_condition = None
         self.win_text = self.font.render('', True, (0, 255, 0))
         self.loss_text = self.font.render('', True, (255, 0, 0))
         pygame.mixer.music.load('My_Life_Be_Like.mp3')
-        self.t0 = time.time()
         self.pads, self.trophies, self.car_pos = levels.level1()
         self.pad_group = pygame.sprite.RenderPlain(*self.pads)
         self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
 
         self.genetic_algorithm = genetic.GeneticAlgorithm()
 
+    # Uses euclidean distance to calculate closest pad, returns pad and distance
+    def calculate_closest_pad(self, car):
+        pad_number, distance = 0, sys.maxsize
+        for index, pad in enumerate(self.pads):
+            # top left
+            tp, td = index, genetic.euclidean((car.position[0], pad.rect.topleft[0]),
+                                              (car.position[1], pad.rect.topleft[1]))
+            if td < distance:
+                pad_number, distance = tp, td
+            # top right
+            tp, td = index, genetic.euclidean((car.position[0], pad.rect.topright[0]),
+                                              (car.position[1], pad.rect.topright[1]))
+            if td < distance:
+                pad_number, distance = tp, td
+            # bottom left
+            tp, td = index, genetic.euclidean((car.position[0], pad.rect.bottomleft[0]),
+                                              (car.position[1], pad.rect.bottomleft[1]))
+            if td < distance:
+                pad_number, distance = tp, td
+            # bottom right
+            tp, td = index, genetic.euclidean((car.position[0], pad.rect.bottomright[0]),
+                                              (car.position[1], pad.rect.bottomright[1]))
+            if td < distance:
+                pad_number, distance = tp, td
+        return pad_number, distance
+
     def run_level(self, level=1):
 
+        self.win_condition = None
+        t0 = time.time()
         cars = list(self.genetic_algorithm.construct_cars(self.car_pos))
         car_group = pygame.sprite.RenderPlain(*cars)
 
@@ -34,7 +60,7 @@ class Main():
         while True:
 
             t1 = time.time()
-            dt = t1 - self.t0
+            dt = t1 - t0
 
             deltat = self.clock.tick(30)
             for event in pygame.event.get():
@@ -46,7 +72,7 @@ class Main():
             # Main iteration loop
             for i in range(len(cars)):
                 car_data = cars[i].get_car_data()
-                car_data.extend([self.trophies[0].rect.x, self.trophies[0].rect.y])
+                car_data.extend([self.trophies[0].rect.x, self.trophies[0].rect.y, self.calculate_closest_pad(cars[i])[1]])
                 predictions = np.round(cars[i].decision(car_data), 0)
                 dir = predictions.argmax()
                 if dir == 0:
@@ -64,10 +90,8 @@ class Main():
                 timer_text = self.font.render(str(seconds), True, (255,255,0))
                 if seconds <= 0:
                     self.win_condition = False
-                    timer_text = self.font.render("Time!", True, (255,0,0))
-                    self.loss_text = self.win_font.render('Press Space to Retry', True, (255,0,0))
                     self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y))
-
+                    self.run_level()
 
             #RENDERING
             self.screen.fill((0,0,0))
@@ -78,8 +102,8 @@ class Main():
                     car_group.remove(car)
                 if len(car_group) == 0:
                     #win_condition = False
-                    print("Stupid cars")
                     self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y))
+                    self.run_level()
 
             trophy_collision = pygame.sprite.groupcollide(car_group, self.trophy_group, False, True)
             if trophy_collision != {}:
