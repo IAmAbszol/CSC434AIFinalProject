@@ -16,7 +16,7 @@ from bisect import bisect_left
 
 from ai import network
 
-INPUT = 8
+INPUT = 10
 HIDDEN = 32
 OUTPUT = 4
 
@@ -46,7 +46,7 @@ class GeneticAlgorithm:
         self.startTime = 0
         self.parents = []
         self.historicalFitnesses = []
-        self.lastParentIndex = self.crossover_pool - 1
+        self.lastParentIndex = (self.crossover_pool - 1) if self.crossover_pool < pool_size else (pool_size - 1)
         self.pIndex = 1
 
     def _display(self, candidate):
@@ -99,8 +99,10 @@ class GeneticAlgorithm:
     # parameters required such as distance, etc. Possibly capture within car?
     def get_fitness(self, participants, data):
         for participant in participants:
-            print(participant.distance)
-            #print("Car data -> {}\nTrophy X, Y -> P{}".format(participant.get_car_data(), data))
+            participant.Chromosome.Fitness = participant.distance - \
+                                             euclidean((participant.position[0], data[0]),
+                                                                              (participant.position[1], data[1])) + \
+                                             data[2] + int(data[3])
 
     def evaluate_performance(self, participants, data):
         self.get_fitness(participants, data)
@@ -118,7 +120,7 @@ class GeneticAlgorithm:
                     if sorted_participants[_].Fitness > self.bestParent.Fitness:
                         self.bestParent = sorted_participants[_]
                         self.historicalFitnesses.append(self.bestParent.Fitness)
-                self.parents.append(sorted_participants[_])
+                    self.parents.append(sorted_participants[_])
             self.first_run = False
 
         self.pIndex = self.pIndex - 1 if self.pIndex > 0 else self.lastParentIndex
@@ -135,7 +137,7 @@ class GeneticAlgorithm:
             difference = len(self.historicalFitnesses) - index
             proportionSimilar = difference / len(self.historicalFitnesses)
             if random.random() < math.exp(-proportionSimilar):
-                self.parents[self.pindex] = child
+                self.parents[self.pIndex] = child
                 return
             self.bestParent.Age = 0
             self.parents[self.pIndex] = self.bestParent

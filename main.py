@@ -16,12 +16,16 @@ class Main():
         self.win_font = pygame.font.Font(None, 50)
         self.win_text = self.font.render('', True, (0, 255, 0))
         self.loss_text = self.font.render('', True, (255, 0, 0))
+        self.current_generation = 0
+        self.small_font = pygame.font.Font(None, 32)
+        self.generation = self.small_font.render('Generation ' + str(self.current_generation), False, (255, 0, 0))
         pygame.mixer.music.load('My_Life_Be_Like.mp3')
         self.pads, self.trophies, self.car_pos = levels.level1()
         self.pad_group = pygame.sprite.RenderPlain(*self.pads)
         self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
 
-        self.genetic_algorithm = genetic.GeneticAlgorithm()
+        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=500)
+        self.cheat = True
 
     # Uses euclidean distance to calculate closest pad, returns pad and distance
     def calculate_closest_pad(self, car):
@@ -56,6 +60,9 @@ class Main():
         cars = list(self.genetic_algorithm.construct_cars(self.car_pos))
         car_group = pygame.sprite.RenderPlain(*cars)
 
+
+        self.generation = self.small_font.render('Generation ' + str(self.current_generation), False, (255, 0, 0))
+
         #LOOP
         while True:
 
@@ -63,6 +70,7 @@ class Main():
             dt = t1 - t0
 
             deltat = self.clock.tick(30)
+            seconds = round((20 - dt), 2)
             for event in pygame.event.get():
                 if not hasattr(event, 'key'): continue
                 if event.key == K_ESCAPE:
@@ -72,9 +80,10 @@ class Main():
             # Main iteration loop
             for i in range(len(cars)):
                 car_data = cars[i].get_car_data()
-                car_data.extend([self.trophies[0].rect.x, self.trophies[0].rect.y, self.calculate_closest_pad(cars[i])[1]])
+                car_data.extend([self.trophies[0].rect.x, self.trophies[0].rect.y, self.calculate_closest_pad(cars[i])[1], seconds, genetic.euclidean((cars[i].position[0], self.trophies[0].rect.x),
+                                                                                                                                                      (cars[i].position[1], self.trophies[0].rect.y))])
                 predictions = np.round(cars[i].decision(car_data), 0)
-                dir = predictions.argmax()
+                dir = predictions.argmax() if not self.cheat else 0
                 if dir == 0:
                     cars[i].k_up = 2
                 elif dir == 1:
@@ -83,14 +92,16 @@ class Main():
                     cars[i].k_left = -5
                 elif dir == 3:
                     cars[i].k_right = 5
+                if self.cheat:
+                    self.cheat = False
 
             #COUNTDOWN TIMER
-            seconds = round((20 - dt),2)
             if self.win_condition is None:
                 timer_text = self.font.render(str(seconds), True, (255,255,0))
                 if seconds <= 0:
                     self.win_condition = False
-                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y))
+                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y, self.calculate_closest_pad(cars[i])[1], seconds))
+                    self.current_generation += 1
                     self.run_level()
 
             #RENDERING
@@ -102,7 +113,8 @@ class Main():
                     car_group.remove(car)
                 if len(car_group) == 0:
                     #win_condition = False
-                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y))
+                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y, self.calculate_closest_pad(cars[i])[1], seconds))
+                    self.current_generation += 1
                     self.run_level()
 
             trophy_collision = pygame.sprite.groupcollide(car_group, self.trophy_group, False, True)
@@ -129,5 +141,6 @@ class Main():
             self.screen.blit(timer_text, (20,60))
             self.screen.blit(self.win_text, (250, 700))
             self.screen.blit(self.loss_text, (250, 700))
+            self.screen.blit(self.generation, (850, 60))
             pygame.display.flip()
 
