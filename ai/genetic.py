@@ -13,7 +13,7 @@ import datetime
 import random
 import numpy as np
 from bisect import bisect_left
-
+import sys, os
 from ai import network
 
 INPUT = 10
@@ -30,13 +30,20 @@ def frange(x, y, jump):
 def euclidean(dx, dy):
     return np.sqrt((dx[1] - dx[0]) ** 2 + (dy[1] - dy[0]) ** 2)
 
+
 class GeneticAlgorithm:
 
     def __init__(self, pool_size=10):
+
+        try:
+            os.remove("log.txt")
+        except OSError:
+            pass
+
         self.pool = pool_size
         self.crossover_pool = 5
         self.first_run = True
-        self.parent = self.bestParent = 0
+        self.parent = self.bestParent = None
         self.strategy_pool = ["Create", "Mutate", "Crossover"]
         # takes ~13 seconds on testing system. Called once per class creation
         self.Geneset = list(frange(-1, 1, .0001))
@@ -50,7 +57,9 @@ class GeneticAlgorithm:
         self.pIndex = 1
 
     def _display(self, candidate):
-        print("{}-Strategy: {}-{}".format(candidate.Genes, candidate.Strategy, (datetime.datetime.now() - self.startTime)))
+        file = open("log.txt", "a")
+        file.write("Fitness: {} - Strategy: {} - {} - Genes: {}\n".format(candidate.Fitness, candidate.Strategy, (datetime.datetime.now() - self.startTime), candidate.Genes))
+        file.close()
 
     def _crossover(self, participant_a, participant_b):
         child = self.Chromosome(0, 0, "Crossover")
@@ -97,12 +106,15 @@ class GeneticAlgorithm:
                         self.parents[random.randrange(0, len(self.parents))]))
 
     # parameters required such as distance, etc. Possibly capture within car?
-    def get_fitness(self, participants, data):
-        for participant in participants:
-            participant.Chromosome.Fitness = participant.distance - \
+    def get_fitness(self, participants, data, car=True):
+        if car:
+            for participant in participants:
+                participant.Chromosome.Fitness = participant.distance - \
                                              euclidean((participant.position[0], data[0]),
                                                                               (participant.position[1], data[1])) + \
                                              data[2] + int(data[3])
+        else:
+            participants.Fitness = -sys.maxsize
 
     def evaluate_performance(self, participants, data):
         self.get_fitness(participants, data)
@@ -111,6 +123,7 @@ class GeneticAlgorithm:
         if self.first_run:
             self.startTime = datetime.datetime.now()
             self.bestParent = self._create(self.Genelength, self.Geneset)
+            self.get_fitness(self.bestParent, data, car=False)
             self.parents = [self.bestParent]
             self.historicalFitnesses = [self.bestParent.Fitness]
 
@@ -118,6 +131,7 @@ class GeneticAlgorithm:
             for _ in range(self.crossover_pool - 1):
                 if _ < len(sorted_participants):
                     if sorted_participants[_].Fitness > self.bestParent.Fitness:
+                        self._display(sorted_participants[_])
                         self.bestParent = sorted_participants[_]
                         self.historicalFitnesses.append(self.bestParent.Fitness)
                     self.parents.append(sorted_participants[_])
@@ -145,12 +159,14 @@ class GeneticAlgorithm:
         if not child.Fitness > self.parent.Fitness:
             child.Age = self.parent.Age + 1
             self.parents[self.pIndex] = child
+            self._display(child)
             return
         child.Age = 0
         self.parents[self.pIndex] = child
         if child.Fitness > self.bestParent.Fitness:
             self.bestParent = child
             self.historicalFitnesses.append(self.bestParent.Fitness)
+            self._display(child)
 
     class CarSprite(pygame.sprite.Sprite):
 

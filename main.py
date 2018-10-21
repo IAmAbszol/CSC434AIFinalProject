@@ -20,6 +20,7 @@ class Main():
         self.small_font = pygame.font.Font(None, 32)
         self.generation = self.small_font.render('Generation ' + str(self.current_generation), False, (255, 0, 0))
         pygame.mixer.music.load('My_Life_Be_Like.mp3')
+
         self.pads, self.trophies, self.car_pos = levels.level1()
         self.pad_group = pygame.sprite.RenderPlain(*self.pads)
         self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
@@ -55,11 +56,25 @@ class Main():
 
     def run_level(self, level=1):
 
+        # Fix for double run of 1
+        if level == 1:
+            self.pads, self.trophies, self.car_pos = levels.level1()
+        elif level == 2:
+            self.pads, self.trophies, self.car_pos = levels.level2()
+        elif level == 3:
+            self.pads, self.trophies, self.car_pos = levels.level3()
+        elif level == 4:
+            self.pads, self.trophies, self.car_pos = levels.level4()
+        elif level == 5:
+            self.pads, self.trophies, self.car_pos = levels.level5()
+
+        self.pad_group = pygame.sprite.RenderPlain(*self.pads)
+        self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
+
         self.win_condition = None
         t0 = time.time()
         cars = list(self.genetic_algorithm.construct_cars(self.car_pos))
         car_group = pygame.sprite.RenderPlain(*cars)
-
 
         self.generation = self.small_font.render('Generation ' + str(self.current_generation), False, (255, 0, 0))
 
@@ -76,6 +91,10 @@ class Main():
                 if event.key == K_ESCAPE:
                     print("Exiting AI.")
                     sys.exit(0)
+                if event.key == K_SPACE:
+                    if self.win_condition:
+                        pygame.mixer.music.stop()
+                        self.run_level(level=(level + 1))
 
             # Main iteration loop
             for i in range(len(cars)):
@@ -102,7 +121,7 @@ class Main():
                     self.win_condition = False
                     self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y, self.calculate_closest_pad(cars[i])[1], seconds))
                     self.current_generation += 1
-                    self.run_level()
+                    self.run_level(level)
 
             #RENDERING
             self.screen.fill((0,0,0))
@@ -115,7 +134,7 @@ class Main():
                     #win_condition = False
                     self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y, self.calculate_closest_pad(cars[i])[1], seconds))
                     self.current_generation += 1
-                    self.run_level()
+                    self.run_level(level)
 
             trophy_collision = pygame.sprite.groupcollide(car_group, self.trophy_group, False, True)
             if trophy_collision != {}:
@@ -130,7 +149,6 @@ class Main():
                     pygame.mixer.music.play(loops=0, start=0.0)
                     self.win_text = self.win_font.render('Press Space to Advance', True, (0,255,0))
                     if self.win_condition:
-                        print(car.Chromosome.Genes)
                         car.k_right = -5
 
             self.pad_group.update(collisions)
@@ -143,4 +161,3 @@ class Main():
             self.screen.blit(self.loss_text, (250, 700))
             self.screen.blit(self.generation, (850, 60))
             pygame.display.flip()
-
