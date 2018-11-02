@@ -16,8 +16,8 @@ from bisect import bisect_left
 import sys, os
 from ai import network
 
-INPUT = 10
-HIDDEN = 32
+INPUT = 7
+HIDDEN = 16
 OUTPUT = 4
 
 
@@ -46,7 +46,7 @@ class GeneticAlgorithm:
         self.parent = self.bestParent = None
         self.strategy_pool = ["Create", "Mutate", "Crossover"]
         # takes ~13 seconds on testing system. Called once per class creation
-        self.Geneset = list(frange(-1, 1, .0001))
+        self.Geneset = list(frange(-1, 1, .000001))
         self.Genelength = (INPUT * HIDDEN) + (HIDDEN * OUTPUT)
         self.maxAge = 5
 
@@ -112,7 +112,7 @@ class GeneticAlgorithm:
                 participant.Chromosome.Fitness = participant.distance - \
                                              euclidean((participant.position[0], data[0]),
                                                                               (participant.position[1], data[1])) + \
-                                             data[2] + int(data[3])
+                                             int(data[2])
         else:
             participants.Fitness = -sys.maxsize
 
@@ -179,7 +179,7 @@ class GeneticAlgorithm:
             pygame.sprite.Sprite.__init__(self)
             self.src_image = pygame.image.load(image)
             self.position = position
-            self.speed = self.direction = 0
+            self.speed = self.direction = self.orientation = 0
             self.k_left = self.k_right = self.k_down = self.k_up = 0
             self.distance = 0
             self.Chromosome = chromosome
@@ -192,7 +192,8 @@ class GeneticAlgorithm:
                 self.speed = self.MAX_FORWARD_SPEED
             if self.speed < -self.MAX_REVERSE_SPEED:
                 self.speed = -self.MAX_REVERSE_SPEED
-            self.direction += (self.k_right + self.k_left)
+            self.direction = (self.direction + (self.k_right + self.k_left)) % 360
+            self.orientation = (self.direction + 90) % 360
             x, y = (self.position)
             rad = self.direction * math.pi / 180
             cur_x = x
@@ -209,7 +210,7 @@ class GeneticAlgorithm:
             return self.Network.predict(data)
 
         def get_car_data(self):
-            return [self.position[0], self.position[1], self.speed, self.direction, self.distance]
+            return [self.position[0], self.position[1], self.speed, self.direction]
 
     class Chromosome:
 
