@@ -16,7 +16,8 @@ from bisect import bisect_left
 import sys, os
 from ai import network
 
-INPUT = 7
+OPTIMIZER = 3
+INPUT = 5
 HIDDEN = 16
 OUTPUT = 4
 
@@ -41,13 +42,13 @@ class GeneticAlgorithm:
             pass
 
         self.pool = pool_size
-        self.crossover_pool = 5
+        self.crossover_pool = 1
         self.first_run = True
         self.parent = self.bestParent = None
         self.strategy_pool = ["Create", "Mutate", "Crossover"]
         # takes ~13 seconds on testing system. Called once per class creation
-        self.Geneset = list(frange(-1, 1, .000001))
-        self.Genelength = (INPUT * HIDDEN) + (HIDDEN * OUTPUT)
+        self.Geneset = list(frange(-5, 5, .001))
+        self.Genelength = OPTIMIZER + (INPUT * HIDDEN) + (HIDDEN * OUTPUT)
         self.maxAge = 5
 
         self.startTime = 0
@@ -108,13 +109,12 @@ class GeneticAlgorithm:
     # parameters required such as distance, etc. Possibly capture within car?
     def get_fitness(self, participants, data, car=True):
         if car:
-            for participant in participants:
-                participant.Chromosome.Fitness = participant.distance - \
-                                             euclidean((participant.position[0], data[0]),
-                                                                              (participant.position[1], data[1])) + \
-                                             int(data[2])
+            for index, participant in enumerate(participants):
+                participant.Chromosome.Fitness = participant.Chromosome.Genes[0] * euclidean((participant.position[0],
+                                                data[0]), (participant.position[1], data[1])) + \
+                                                participant.Chromosome.Genes[1] * participant.sit_time
         else:
-            participants.Fitness = -sys.maxsize
+            participants.Fitness = sys.maxsize
 
     def evaluate_performance(self, participants, data):
         self.get_fitness(participants, data)
@@ -182,8 +182,9 @@ class GeneticAlgorithm:
             self.speed = self.direction = self.orientation = 0
             self.k_left = self.k_right = self.k_down = self.k_up = 0
             self.distance = 0
+            self.sit_time = 0
             self.Chromosome = chromosome
-            self.Network = network.NeuralNetwork(chromosome.Genes, INPUT, HIDDEN, OUTPUT)
+            self.Network = network.NeuralNetwork(chromosome.Genes[OPTIMIZER:], INPUT, HIDDEN, OUTPUT)
 
         def update(self, deltat):
             # SIMULATION
@@ -201,6 +202,7 @@ class GeneticAlgorithm:
             x += -self.speed * math.sin(rad)
             y += -self.speed * math.cos(rad)
             self.distance += euclidean((cur_x, x), (cur_y, y))
+            self.sit_time += 1 if cur_x == x and cur_y == y else 0
             self.position = (x, y)
             self.image = pygame.transform.rotate(self.src_image, self.direction)
             self.rect = self.image.get_rect()
@@ -221,7 +223,7 @@ class GeneticAlgorithm:
             self.Age = 0
 
         def __gt__(self, other):
-            return self.Fitness > other.Fitness
+            return self.Fitness < other.Fitness
 
         def __str__(self):
             return "Genes : {} - Fitness : {}.".format(self.Genes, self.Fitness)

@@ -25,43 +25,48 @@ class Main():
         self.pad_group = pygame.sprite.RenderPlain(*self.pads)
         self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
 
-        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=10)
+        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=3)
         self.cheat = False
 
     # Uses euclidean distance to return FORWARD, BACKWARD, LEFT, RIGHT euclidean distances
+    def projection(self, x, y, orientation, scalar):
+        # forward
+        o_x = round(math.cos(math.radians(orientation)) * scalar, 3)
+        o_y = round(math.sin(math.radians(orientation)) * scalar, 3)
+        set_d1 = (x + o_x), \
+                 (y - o_y)
+        # backward
+        set_d2 = (x + o_x), \
+                 (y + o_y)
+
+        # left/right requires orientation swap
+        d_orientation = (orientation - 90) % 360
+        o_x = round(math.cos(math.radians(d_orientation)) * scalar, 3)
+        o_y = round(math.sin(math.radians(d_orientation)) * scalar, 3)
+        # left
+        set_d3 = (x - o_x), \
+                 (y + o_y)
+        # right
+        set_d4 = (x + o_x), \
+                 (y - o_y)
+
+        return set_d1, set_d2, set_d3, set_d4
+
+
+    def in_area(self, pad, dx, dy):
+        if pad.rect.topleft[0] <= dx <= pad.rect.topright[0]:
+            if pad.rect.topleft[1] <= dy <= pad.rect.bottomleft[1]:
+                return True
+        return False
+
+
     def calculate_closest_pad_by_direction(self, car):
-        def projection(x, y, orientation, scalar):
-            # forward
-            set_d1 = (x + round(math.cos(math.radians(orientation)) * scalar, 3)), \
-                   (y - round(math.sin(math.radians(orientation)) * scalar, 3))
-            # backward
-            set_d2 = (x + round(math.cos(math.radians(orientation)) * scalar, 3)), \
-                     (y + round(math.sin(math.radians(orientation)) * scalar, 3))
-
-            # left/right requires orientation swap
-            d_orientation = (orientation - 90) % 360
-            # left
-            set_d3 = (x - round(math.cos(math.radians(d_orientation)) * scalar, 3)), \
-                     (y + round(math.sin(math.radians(d_orientation)) * scalar, 3))
-            # right
-            set_d4 = (x + round(math.cos(math.radians(d_orientation)) * scalar, 3)), \
-                     (y - round(math.sin(math.radians(d_orientation)) * scalar, 3))
-
-            return set_d1, set_d2, set_d3, set_d4
-
-        def in_area(pad, dx, dy):
-            if pad.rect.topleft[0] <= dx and pad.rect.topright[0] >= dx:
-                if pad.rect.topleft[1] <= dy and pad.rect.bottomleft[1] >= dy:
-                    return True
-            return False
-
-        directions = [ sys.maxsize for i in range(0, 4)]
+        directions = [0 for i in range(0, 4)]
         for pad in self.pads:
             for scale in range(200):
-                for index, direction in enumerate(projection(car.position[0], car.position[1], car.orientation, scale)):
-                    if in_area(pad, direction[0], direction[1]) and (directions[index] == sys.maxsize or directions[index] > genetic.euclidean((direction[0], car.position[0]), (direction[1], car.position[1]))):
-                        directions[index] = genetic.euclidean((direction[0], car.position[0]), (direction[1], car.position[1]))
-
+                for index, direction in enumerate(self.projection(car.position[0], car.position[1], car.orientation, scale)):
+                    if self.in_area(pad, direction[0], direction[1]) and directions[index] == 0:
+                        directions[index] = 1
         return directions
 
 
@@ -118,11 +123,6 @@ class Main():
         #LOOP
         while True:
 
-            t1 = time.time()
-            dt = t1 - t0
-
-            deltat = self.clock.tick(30)
-            seconds = round((20 - dt), 2)
             for event in pygame.event.get():
                 if not hasattr(event, 'key'): continue
                 if event.key == K_ESCAPE:
@@ -134,6 +134,7 @@ class Main():
                     self.run_level(level=(level + 1))
 
             # Main iteration loop
+            computation_time = time.time()
             for i in range(len(cars)):
                 car_data = cars[i].get_car_data()
                 distances = self.calculate_closest_pad_by_direction(cars[i])
@@ -142,10 +143,8 @@ class Main():
                          distances[0],
                          distances[1],
                          distances[2],
-                         distances[3],
-                         car_data[2],
-                         car_data[3]]
-                predictions = np.round(cars[i].decision(data), 0)
+                         distances[3]]
+                predictions = cars[i].decision(data)
                 dir = predictions.argmax() if not self.cheat else 0
 
                 if dir == 0:
@@ -159,12 +158,19 @@ class Main():
                 if self.cheat:
                     self.cheat = False
 
+            computation_time = time.time() - computation_time
+            t1 = time.time()
+            dt = t1 - t0 - computation_time
+
+            deltat = self.clock.tick(30)
+            seconds = round((20 - dt), 2)
+
             #COUNTDOWN TIMER
             if self.win_condition is None:
                 timer_text = self.font.render(str(seconds), True, (255,255,0))
                 if seconds <= 0:
                     self.win_condition = False
-                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y, self.calculate_closest_pad(cars[i])[1], seconds))
+                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y))
                     self.current_generation += 1
                     self.run_level(level)
 
@@ -177,7 +183,7 @@ class Main():
                     car_group.remove(car)
                 if len(car_group) == 0:
                     #win_condition = False
-                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y, seconds))
+                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y))
                     self.current_generation += 1
                     self.run_level(level)
 
