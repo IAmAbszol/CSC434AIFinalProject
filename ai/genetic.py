@@ -16,10 +16,10 @@ from bisect import bisect_left
 import sys, os
 from ai import network
 
-OPTIMIZER = 3
-INPUT = 5
-HIDDEN = 16
-OUTPUT = 4
+OPTIMIZER = 0
+INPUT = 7
+HIDDEN = 12
+OUTPUT = 5
 
 
 def frange(x, y, jump):
@@ -42,14 +42,14 @@ class GeneticAlgorithm:
             pass
 
         self.pool = pool_size
-        self.crossover_pool = 1
+        self.crossover_pool = 20
         self.first_run = True
         self.parent = self.bestParent = None
         self.strategy_pool = ["Create", "Mutate", "Crossover"]
         # takes ~13 seconds on testing system. Called once per class creation
         self.Geneset = list(frange(-5, 5, .001))
         self.Genelength = OPTIMIZER + (INPUT * HIDDEN) + (HIDDEN * OUTPUT)
-        self.maxAge = 5
+        self.maxAge = 10
 
         self.startTime = 0
         self.parents = []
@@ -85,7 +85,7 @@ class GeneticAlgorithm:
         return child
 
     def _create(self, length, geneset):
-        participant = self.Chromosome([0 for x in range(length)], 0, "Create")
+        participant = self.Chromosome([0 for x in range(length)], sys.maxsize, "Create")
         for i in range(length):
             participant.Genes[i] = geneset[random.randrange(0, len(geneset))]
         return participant
@@ -110,14 +110,37 @@ class GeneticAlgorithm:
     def get_fitness(self, participants, data, car=True):
         if car:
             for index, participant in enumerate(participants):
-                participant.Chromosome.Fitness = participant.Chromosome.Genes[0] * euclidean((participant.position[0],
+                death_score = 0
+                if not participant.alive:
+                    # Evaluate death
+                    death_turn = participant.history[-1].Turn
+                    for index, d in enumerate(participant.history[-1].Distances):
+                        # Case 1 - Score 2 (Worst), turn selected was into a wall =/
+                        if d == 1 and death_turn == index:
+                            death_score += 2
+                        # Case 2 - Score 1 (Best), turn NOT selected that would've led into wall
+                        if d == 1 and not death_turn == index:
+                            death_score += 0
+                        # Case 3 - Score 0 (Medium), turn NOT selected that would've led safely
+                        if d == 0 and not death_turn == index:
+                            death_score += 1
+
+                turns = [history.Turn for history in participant.history]
+                turn_score = len(turns) - len(set(turns))
+                participant.Chromosome.Fitness = euclidean((participant.position[0],
                                                 data[0]), (participant.position[1], data[1])) + \
-                                                participant.Chromosome.Genes[1] * participant.sit_time
+                                                10 * participant.sit_time + \
+                                                5 * death_score + \
+                                                100 * turn_score
+
+                if participant.win:
+                    participant.Chromosome.Fitness = 0
         else:
             participants.Fitness = sys.maxsize
+        return participants
 
     def evaluate_performance(self, participants, data):
-        self.get_fitness(participants, data)
+        participants = self.get_fitness(participants, data)
         participants_genes = [i.Chromosome for i in participants]
         sorted_participants = sorted(participants_genes, reverse=True)
         if self.first_run:
@@ -183,6 +206,9 @@ class GeneticAlgorithm:
             self.k_left = self.k_right = self.k_down = self.k_up = 0
             self.distance = 0
             self.sit_time = 0
+            self.history = []
+            self.alive = True
+            self.win = False
             self.Chromosome = chromosome
             self.Network = network.NeuralNetwork(chromosome.Genes[OPTIMIZER:], INPUT, HIDDEN, OUTPUT)
 
@@ -214,6 +240,9 @@ class GeneticAlgorithm:
         def get_car_data(self):
             return [self.position[0], self.position[1], self.speed, self.direction]
 
+        def add_history(self, turn, time=None, distances=None):
+            self.history.append(History(self.position[0], self.position[1], self.distance, turn, time=time, distances=distances))
+
     class Chromosome:
 
         def __init__(self, genes, fitness, strat):
@@ -227,3 +256,17 @@ class GeneticAlgorithm:
 
         def __str__(self):
             return "Genes : {} - Fitness : {}.".format(self.Genes, self.Fitness)
+
+
+class History:
+    def __init__(self, x, y, distance_traveled, turn_choice, time=None, distances=None):
+        self.X = x
+        self.Y = y
+        self.Distance = distance_traveled
+        self.Turn = turn_choice
+        self.Time = time
+        self.Distances = distances
+
+
+    def get_history(self):
+        return self.X, self.Y, self.Distance, self.Turn, self.Time, self.Distances

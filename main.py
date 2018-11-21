@@ -63,10 +63,11 @@ class Main():
     def calculate_closest_pad_by_direction(self, car):
         directions = [0 for i in range(0, 4)]
         for pad in self.pads:
-            for scale in range(200):
-                for index, direction in enumerate(self.projection(car.position[0], car.position[1], car.orientation, scale)):
-                    if self.in_area(pad, direction[0], direction[1]) and directions[index] == 0:
-                        directions[index] = 1
+            #for scale in range(200):
+			scale = 90
+			for index, direction in enumerate(self.projection(car.position[0], car.position[1], car.orientation, scale)):
+				if self.in_area(pad, direction[0], direction[1]) and directions[index] == 0:
+					directions[index] = 1
         return directions
 
 
