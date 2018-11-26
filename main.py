@@ -1,215 +1,207 @@
-#initialize the screen
-import pygame, math, sys, time, numpy as np
-from pygame.locals import *
+import pygame
 
-from ai import genetic
-import levels
+"""
+    levels.py
+    Houses all possible levels for the game to choose from.
 
-class Main():
+    Selection occurs by invoking the selected level
+    and by having a return tuple of (pad_sprite, trophies, car[x,y]).
 
-    def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((1024, 768))
-        # GAME CLOCK
-        self.clock = pygame.time.Clock()
-        self.font = pygame.font.Font(None, 75)
-        self.win_font = pygame.font.Font(None, 50)
-        self.win_text = self.font.render('', True, (0, 255, 0))
-        self.loss_text = self.font.render('', True, (255, 0, 0))
-        self.current_generation = 0
-        self.small_font = pygame.font.Font(None, 32)
-        self.generation = self.small_font.render('Generation ' + str(self.current_generation), False, (255, 0, 0))
-        pygame.mixer.music.load('My_Life_Be_Like.mp3')
+    Must still be rendered into the main game.
+"""
 
-        self.pads, self.trophies, self.car_pos = levels.level1()
-        self.pad_group = pygame.sprite.RenderPlain(*self.pads)
-        self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
+class PadSprite(pygame.sprite.Sprite):
+    def __init__(self, image, position):
+        super(PadSprite, self).__init__()
+        self.normal = pygame.image.load(image)
+        self.hit = pygame.image.load('images/collision.png')
+        self.rect = pygame.Rect(self.normal.get_rect())
+        self.rect.center = position
 
-        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=3)
-        self.cheat = False
+    def update(self, hit_list):
+        if self in hit_list:
+            self.image = self.hit
+        else:
+            self.image = self.normal
 
-    # Uses euclidean distance to return FORWARD, BACKWARD, LEFT, RIGHT euclidean distances
-    def projection(self, x, y, orientation, scalar):
-        # forward
-        o_x = round(math.cos(math.radians(orientation)) * scalar, 3)
-        o_y = round(math.sin(math.radians(orientation)) * scalar, 3)
-        set_d1 = (x + o_x), \
-                 (y - o_y)
-        # backward
-        set_d2 = (x + o_x), \
-                 (y + o_y)
+class Trophy(pygame.sprite.Sprite):
+    def __init__(self, position):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load('images/trophy.png')
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = position
 
-        # left/right requires orientation swap
-        d_orientation = (orientation - 90) % 360
-        o_x = round(math.cos(math.radians(d_orientation)) * scalar, 3)
-        o_y = round(math.sin(math.radians(d_orientation)) * scalar, 3)
-        # left
-        set_d3 = (x - o_x), \
-                 (y + o_y)
-        # right
-        set_d4 = (x + o_x), \
-                 (y - o_y)
-
-        return set_d1, set_d2, set_d3, set_d4
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
 
 
-    def in_area(self, pad, dx, dy):
-        if pad.rect.topleft[0] <= dx <= pad.rect.topright[0]:
-            if pad.rect.topleft[1] <= dy <= pad.rect.bottomleft[1]:
-                return True
-        return False
+def level1():
+    pads = [
+        PadSprite('images/race_pads.png', (800, 100)),
+        PadSprite('images/race_pads.png', (300, 100)),
+        PadSprite('images/race_pads.png', (0, 100)),
+        PadSprite('images/race_pads.png', (800, 600)),
+        PadSprite('images/race_pads.png', (300, 600)),
+        PadSprite('images/race_pads.png', (0, 600)),
+
+        PadSprite('images/vertical_pads.png', (0,250)),
+        PadSprite('images/vertical_pads.png', (0, 525)),
+        PadSprite('images/vertical_pads.png', (1024, 250)),
+        PadSprite('images/vertical_pads.png', (1024, 525)),
+        PadSprite('images/race_pads.png', (250, 0)),
+        PadSprite('images/race_pads.png', (760, 0)),
+        PadSprite('images/race_pads.png', (500, 0)),
+        PadSprite('images/race_pads.png', (250, 768)),
+        PadSprite('images/race_pads.png', (760, 768)),
+        PadSprite('images/race_pads.png', (500, 768))
+    ]
+    trophies = [Trophy((900,150))]
+    return pads, trophies, (100,550), 10
 
 
-    def calculate_closest_pad_by_direction(self, car):
-        directions = [0 for i in range(0, 4)]
-        for pad in self.pads:
-            #for scale in range(200):
-			scale = 90
-			for index, direction in enumerate(self.projection(car.position[0], car.position[1], car.orientation, scale)):
-				if self.in_area(pad, direction[0], direction[1]) and directions[index] == 0:
-					directions[index] = 1
-        return directions
+def level2():
+    pads = [
+        PadSprite('images/race_pads.png', (800, 100)),
+        PadSprite('images/race_pads.png', (300, 100)),
+        PadSprite('images/race_pads.png', (0, 100)),
+        PadSprite('images/race_pads.png', (800, 700)),
+        PadSprite('images/race_pads.png', (300, 700)),
+        PadSprite('images/race_pads.png', (0, 700)),
+        PadSprite('images/vertical_pads.png', (500, 500)),
+
+        PadSprite('images/small_vertical.png', (0, 250)),
+        PadSprite('images/vertical_pads.png', (0, 525)),
+        PadSprite('images/vertical_pads.png', (1024, 250)),
+        PadSprite('images/vertical_pads.png', (1024, 525)),
+        PadSprite('images/race_pads.png', (250, 0)),
+        PadSprite('images/race_pads.png', (760, 0)),
+        PadSprite('images/race_pads.png', (500, 0)),
+        PadSprite('images/race_pads.png', (250, 768)),
+        PadSprite('images/race_pads.png', (760, 768)),
+        PadSprite('images/race_pads.png', (500, 768))
+    ]
+    trophies = [Trophy((900, 150))]
+    return pads, trophies, (100, 550), 10
 
 
-    # Uses euclidean distance to calculate closest pad, returns pad and distance
-    def calculate_closest_pad(self, car):
-        pad_number, distance = 0, sys.maxsize
-        for index, pad in enumerate(self.pads):
-            # top left
-            tp, td = index, genetic.euclidean((car.position[0], pad.rect.topleft[0]),
-                                              (car.position[1], pad.rect.topleft[1]))
-            if td < distance:
-                pad_number, distance = tp, td
-            # top right
-            tp, td = index, genetic.euclidean((car.position[0], pad.rect.topright[0]),
-                                              (car.position[1], pad.rect.topright[1]))
-            if td < distance:
-                pad_number, distance = tp, td
-            # bottom left
-            tp, td = index, genetic.euclidean((car.position[0], pad.rect.bottomleft[0]),
-                                              (car.position[1], pad.rect.bottomleft[1]))
-            if td < distance:
-                pad_number, distance = tp, td
-            # bottom right
-            tp, td = index, genetic.euclidean((car.position[0], pad.rect.bottomright[0]),
-                                              (car.position[1], pad.rect.bottomright[1]))
-            if td < distance:
-                pad_number, distance = tp, td
-        return pad_number, distance
+def level3():
+    pads = [
+        PadSprite('images/race_pads.png', (0,10)),
+        PadSprite('images/race_pads.png', (600, 10)),
+        PadSprite('images/race_pads.png', (1100, 10)),
+        PadSprite('images/race_pads.png', (100, 150)),
+        PadSprite('images/race_pads.png', (600, 150)),
+        PadSprite('images/race_pads.png', (100, 300)),
+        PadSprite('images/race_pads.png', (800, 300)),
+        PadSprite('images/race_pads.png', (400, 450)),
+        PadSprite('images/race_pads.png', (700, 450)),
+        PadSprite('images/race_pads.png', (200, 600)),
+        PadSprite('images/race_pads.png', (900, 600)),
+        PadSprite('images/race_pads.png', (400, 750)),
+        PadSprite('images/race_pads.png', (800, 750)),
 
-    def run_level(self, level=1):
+        PadSprite('images/vertical_pads.png', (0,250)),
+        PadSprite('images/vertical_pads.png', (0, 525)),
+        PadSprite('images/vertical_pads.png', (1024, 250)),
+        PadSprite('images/vertical_pads.png', (1024, 525)),
+        PadSprite('images/race_pads.png', (250, 0)),
+        PadSprite('images/race_pads.png', (760, 0)),
+        PadSprite('images/race_pads.png', (500, 0)),
+        PadSprite('images/race_pads.png', (250, 768)),
+        PadSprite('images/race_pads.png', (760, 768)),
+        PadSprite('images/race_pads.png', (500, 768))
+    ]
 
-        # Fix for double run of 1
-        if level == 1:
-            self.pads, self.trophies, self.car_pos = levels.level1()
-        elif level == 2:
-            self.pads, self.trophies, self.car_pos = levels.level2()
-        elif level == 3:
-            self.pads, self.trophies, self.car_pos = levels.level3()
-        elif level == 4:
-            self.pads, self.trophies, self.car_pos = levels.level4()
-        elif level == 5:
-            self.pads, self.trophies, self.car_pos = levels.level5()
+    trophies = [Trophy((285, 10))]
 
-        self.pad_group = pygame.sprite.RenderPlain(*self.pads)
-        self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
+    return pads, trophies, (35, 730), 20
 
-        self.win_condition = None
-        t0 = time.time()
-        cars = list(self.genetic_algorithm.construct_cars(self.car_pos))
-        car_group = pygame.sprite.RenderPlain(*cars)
+def level4():
+    pads = [
+        PadSprite('images/vertical_pads.png', (0, 100)),
+        PadSprite('images/vertical_pads.png', (0, 200)),
+        PadSprite('images/vertical_pads.png', (0, 400)),
+        PadSprite('images/vertical_pads.png', (1024, 100)),
+        PadSprite('images/vertical_pads.png', (1024, 550)),
+        PadSprite('images/vertical_pads.png', (200, 768)),
+        PadSprite('images/vertical_pads.png', (200, 368)),
+        PadSprite('images/vertical_pads.png', (800, 375)),
+        PadSprite('images/vertical_pads.png', (200, 368)),
+        PadSprite('images/race_pads.png', (60, 0)),
+        PadSprite('images/race_pads.png', (300, 0)),
+        PadSprite('images/race_pads.png', (700, 0)),
+        PadSprite('images/race_pads.png', (900, 0)),
+        PadSprite('images/race_pads.png', (1024, 768)),
+        PadSprite('images/race_pads.png', (624, 768)),
+        PadSprite('images/race_pads.png', (224, 768)),
+        PadSprite('images/race_pads.png', (450, 130)),
+        PadSprite('images/race_pads.png', (550, 130)),
+        PadSprite('images/small_horizontal.png', (670, 615)),
+        PadSprite('images/small_horizontal.png', (470, 615)),
+        PadSprite('images/small_horizontal.png', (470, 270)),
+        PadSprite('images/small_vertical.png', (350, 490)),
+        PadSprite('images/small_vertical.png', (350, 390)),
+        PadSprite('images/small_vertical.png', (600, 390)),
 
-        self.generation = self.small_font.render('Generation ' + str(self.current_generation), False, (255, 0, 0))
+        PadSprite('images/vertical_pads.png', (0,250)),
+        PadSprite('images/vertical_pads.png', (0, 525)),
+        PadSprite('images/vertical_pads.png', (1024, 250)),
+        PadSprite('images/vertical_pads.png', (1024, 525)),
+        PadSprite('images/race_pads.png', (250, 0)),
+        PadSprite('images/race_pads.png', (760, 0)),
+        PadSprite('images/race_pads.png', (500, 0)),
+        PadSprite('images/race_pads.png', (250, 768)),
+        PadSprite('images/race_pads.png', (760, 768)),
+        PadSprite('images/race_pads.png', (500, 768))
+    ]
 
-        #LOOP
-        while True:
+    trophies = [Trophy((450, 320))]
 
-            for event in pygame.event.get():
-                if not hasattr(event, 'key'): continue
-                if event.key == K_ESCAPE:
-                    print("Exiting AI.")
-                    sys.exit(0)
-                #if event.key == K_SPACE:
-                if self.win_condition:
-                    pygame.mixer.music.stop()
-                    self.run_level(level=(level + 1))
+    return pads, trophies, (30, 730), 20
 
-            # Main iteration loop
-            computation_time = time.time()
-            for i in range(len(cars)):
-                car_data = cars[i].get_car_data()
-                distances = self.calculate_closest_pad_by_direction(cars[i])
-                data = [genetic.euclidean((car_data[0], self.trophies[0].rect.x),
-                                          (car_data[1], self.trophies[0].rect.y)),
-                         distances[0],
-                         distances[1],
-                         distances[2],
-                         distances[3]]
-                predictions = cars[i].decision(data)
-                dir = predictions.argmax() if not self.cheat else 0
+def level5():
+    pads = [
+        PadSprite('images/small_vertical.png', (0, 550)),
+        PadSprite('images/small_vertical.png', (0, 390)),
+        PadSprite('images/small_vertical.png', (0, 190)),
+        PadSprite('images/small_vertical.png', (0, 90)),
+        PadSprite('images/small_vertical.png', (100, -100)),
+        PadSprite('images/small_vertical.png', (100, 290)),
+        PadSprite('images/small_vertical.png', (100, 390)),
+        PadSprite('images/small_vertical.png', (100, 490)),
+        PadSprite('images/small_vertical.png', (200, 590)),
+        PadSprite('images/small_vertical.png', (200, 290)),
+        PadSprite('images/small_vertical.png', (200, 690)),
+        PadSprite('images/small_vertical.png', (300, 590)),
+        PadSprite('images/small_vertical.png', (300, 290)),
+        PadSprite('images/small_vertical.png', (400, 535)),
+        PadSprite('images/small_vertical.png', (400, 225)),
+        PadSprite('images/small_vertical.png', (470, 490)),
+        PadSprite('images/small_vertical.png', (600, 690)),
+        PadSprite('images/small_vertical.png', (600, 290)),
+        PadSprite('images/small_vertical.png', (600, 190)),
+        PadSprite('images/small_vertical.png', (700, 690)),
+        PadSprite('images/small_vertical.png', (700, 290)),
+        PadSprite('images/small_vertical.png', (800, 690)),
+        PadSprite('images/small_vertical.png', (800, 290)),
+        PadSprite('images/small_vertical.png', (900, -50)),
+        PadSprite('images/small_vertical.png', (1000, 690)),
+        PadSprite('images/small_vertical.png', (1000, 290)),
+        PadSprite('images/race_pads.png', (338, 170)),
+        PadSprite('images/race_pads.png', (600, 170)),
 
-                if dir == 0:
-                    cars[i].k_up = 2
-                elif dir == 1:
-                    cars[i].k_down = -2
-                elif dir == 2:
-                    cars[i].k_left = -5
-                elif dir == 3:
-                    cars[i].k_right = 5
-                if self.cheat:
-                    self.cheat = False
+        PadSprite('images/vertical_pads.png', (0,250)),
+        PadSprite('images/vertical_pads.png', (0, 525)),
+        PadSprite('images/vertical_pads.png', (1024, 250)),
+        PadSprite('images/vertical_pads.png', (1024, 525)),
+        PadSprite('images/race_pads.png', (250, 0)),
+        PadSprite('images/race_pads.png', (760, 0)),
+        PadSprite('images/race_pads.png', (500, 0)),
+        PadSprite('images/race_pads.png', (250, 768)),
+        PadSprite('images/race_pads.png', (760, 768)),
+        PadSprite('images/race_pads.png', (500, 768))
+    ]
 
-            computation_time = time.time() - computation_time
-            t1 = time.time()
-            dt = t1 - t0 - computation_time
+    trophies = [Trophy((450, 320))]
 
-            deltat = self.clock.tick(30)
-            seconds = round((20 - dt), 2)
-
-            #COUNTDOWN TIMER
-            if self.win_condition is None:
-                timer_text = self.font.render(str(seconds), True, (255,255,0))
-                if seconds <= 0:
-                    self.win_condition = False
-                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y))
-                    self.current_generation += 1
-                    self.run_level(level)
-
-            #RENDERING
-            self.screen.fill((0,0,0))
-            car_group.update(deltat)
-            collisions = pygame.sprite.groupcollide(car_group, self.pad_group, False, False, collided = None)
-            if collisions != {}:
-                for car in collisions:
-                    car_group.remove(car)
-                if len(car_group) == 0:
-                    #win_condition = False
-                    self.genetic_algorithm.evaluate_performance(cars, (self.trophies[0].rect.x, self.trophies[0].rect.y))
-                    self.current_generation += 1
-                    self.run_level(level)
-
-            trophy_collision = pygame.sprite.groupcollide(car_group, self.trophy_group, False, True)
-            if trophy_collision != {}:
-                for car in trophy_collision:
-                    car_group.empty()
-                    car_group.add(car)
-                    seconds = seconds
-                    timer_text = self.font.render("Finished!", True, (0,255,0))
-                    self.win_condition = True
-                    car.MAX_FORWARD_SPEED = 0
-                    car.MAX_REVERSE_SPEED = 0
-                    pygame.mixer.music.play(loops=0, start=0.0)
-                    self.win_text = self.win_font.render('Press Space to Advance', True, (0,255,0))
-                    if self.win_condition:
-                        car.k_right = -5
-
-            self.pad_group.update(collisions)
-            self.pad_group.draw(self.screen)
-            car_group.draw(self.screen)
-            self.trophy_group.draw(self.screen)
-            #Counter Render
-            self.screen.blit(timer_text, (20,60))
-            self.screen.blit(self.win_text, (250, 700))
-            self.screen.blit(self.loss_text, (250, 700))
-            self.screen.blit(self.generation, (850, 60))
-            pygame.display.flip()
+    return pads, trophies, (30, 730), 20
