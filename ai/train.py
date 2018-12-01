@@ -1,5 +1,3 @@
-# Script to generate CSV of training inputs mapping to output
-
 import numpy as np
 import tensorflow as tf
 import itertools
@@ -7,9 +5,13 @@ import time
 
 from sklearn import model_selection
 
+##################################################################
+## Dataset creation
+##################################################################
+
 # Create base input and labels
 X = np.zeros(shape=(1, 5))
-for i in itertools.product([0, 1], repeat=4):
+for i in itertools.product([i for i in range(2, 14)], repeat=4):
     X = np.append(X, [np.append(np.array(i), 0)], axis=0)
 X = np.delete(X, (0), axis=0)
 
@@ -19,22 +21,42 @@ for row in X:
     for index, element in enumerate(row):
         if index == 4:
             y_label_list.append(0)
+            if y_label_list[0] == 0 and y_label_list[2] == 0 and y_label_list[3] == 0:
+                y_label_list[1] = 1
+            else:
+                y_label_list[1] = 0
+            # Fix output to only a single direction
+            if sum(y_label_list) > 1:
+                row[1] = -1
+                idx = np.argmax(row)
+                y_label_list = [0 for i in range(len(y_label_list))]
+                y_label_list[idx] = 1
+            elif sum(y_label_list) == 0:
+                # Stuck as the others are 0 and somehow down is 0
+                print("ERROR!")
+                exit(1)
             y_label = np.append(y_label, [y_label_list], axis=0)
             break
-        if element == 0:
-            y_label_list.append(1)
-        else:
+        # Adjust number after testing
+        if element <= 6:
             y_label_list.append(0)
+        else:
+            y_label_list.append(1)
 y_label = np.delete(y_label, (0), axis=0)
+
+#print(X[7000:7010])
+#print("-" * 50)
+#print(y_label[7000:7010])
+#exit(0)
 
 # Set max speed, the car can go to a max but
 # that doesn't mean it should.
 X_tmp = X
 y_label_tmp = y_label
-for speed in range(1, 8 + 1):
+for speed in range(0, 10 + 1):
     X_tmp[:, -1] = speed
     X = np.append(X, X_tmp, axis=0)
-    if speed == 8:
+    if speed >= 4:
         y_label_tmp[:, :] = 0
         y_label_tmp[:, -1] = 1
     else:
@@ -42,8 +64,12 @@ for speed in range(1, 8 + 1):
     y_label = np.append(y_label, y_label_tmp, axis=0)
 
 # Create multiple large duplicates of the data
-X = np.repeat(X, 25, axis=0)
-y_label = np.repeat(y_label, 25, axis=0)
+X = np.repeat(X, 5, axis=0)
+y_label = np.repeat(y_label, 5, axis=0)
+
+##################################################################
+## Training
+##################################################################
 
 # Train network and obtain weights
 input_layer = X.shape[1]
@@ -101,8 +127,3 @@ with tf.Session() as sess:
     # Save to output due to training being complete
     save_path = saver.save(sess, "./models/pretrained_car.ckpt")
     writer.close()
-
-    print("Testing logic operators.")
-    for i in range(len(X_test)):
-        print("Input {} --> Actual {}, Predicted {}".format(X_test[i], y_test[i], np.rint(sess.run(hypothesis, feed_dict={X_data: [X_test[i]]}))))
-
