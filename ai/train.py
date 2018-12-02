@@ -37,8 +37,10 @@ for row in X:
                 exit(1)
             y_label = np.append(y_label, [y_label_list], axis=0)
             break
-        # Adjust number after testing
-        if element <= 6:
+        # Adjust number after testing -> Does this change occur by division of 10
+        if element <= 7 and element in [0,1]: 
+            y_label_list.append(0)
+        if element <= 4 and element in [2,3]: 
             y_label_list.append(0)
         else:
             y_label_list.append(1)
@@ -104,7 +106,10 @@ init = tf.global_variables_initializer()
 
 saver = tf.train.Saver()
 
-with tf.Session() as sess:
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+
+with tf.Session(config=config) as sess:
 
     writer = tf.summary.FileWriter("../summary_train", sess.graph)
 

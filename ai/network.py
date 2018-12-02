@@ -9,66 +9,40 @@ def sigmoid(x, derivative=False):
 
 class NeuralNetwork:
 
-    def __init__(self, genes, input_size, hidden_size, output_size):
-        self.inputSize = input_size
-        self.hiddenSize = hidden_size
-        self.outputSize = output_size
-        self.synapse_0 = np.reshape(genes[:(input_size * hidden_size)], (-1, hidden_size))
-        self.synapse_1 = np.reshape(genes[(input_size * hidden_size):(input_size * hidden_size) + (hidden_size * output_size)], (-1, output_size))
+    def __init__(self, w1, b1, w2, b2, input_layer, output_layer):
+        w1_np = np.asarray(w1, np.float32)
+        b1_np = np.asarray(b1, np.float32)
+        w2_np = np.asarray(w2, np.float32)
+        b2_np = np.asarray(b2, np.float32)
 
+        w1_tf = tf.convert_to_tensor(w1_np, np.float32)
+        b1_tf = tf.convert_to_tensor(b1_np, np.float32)
+        w2_tf = tf.convert_to_tensor(w2_np, np.float32)
+        b2_tf = tf.convert_to_tensor(b2_np, np.float32)
+
+        self.X_data = tf.placeholder(tf.float32, shape=[None, input_layer], name='x-inputdata')
+
+        weight_one = w1_tf
+        weight_one = tf.identity(weight_one, name="Weight_One")
+        weight_two = w2_tf
+        weight_two = tf.identity(weight_two, name="Weight_Two")
+
+        bias_one = b1_tf
+        bias_one = tf.identity(bias_one, name="Bias_One")
+        bias_two = b2_tf
+        bias_two = tf.identity(bias_two, name="Bias_Two")
+
+        with tf.name_scope("layer2") as scope:
+            synapse0 = tf.sigmoid(tf.matmul(self.X_data, weight_one) + bias_one, name="Synapse0")
+
+        with tf.name_scope("layer3") as scope:
+            self.hypothesis = tf.sigmoid(tf.matmul(synapse0, weight_two) + bias_two, name="Hypothesis")
+
+        self.init = tf.global_variables_initializer()
+
+        self.sess = tf.Session()
+        self.sess.run(self.init)
 
     def predict(self, data):
-        # feed forward
-        layer_0 = data
-        layer_1 = sigmoid(np.dot(layer_0, self.synapse_0))
-        layer_2 = sigmoid(np.dot(layer_1, self.synapse_1))
-        return layer_2
 
-    def train(self):
-        # Create base input and labels
-        X = np.array([[1, 0, 0, 0, 0, 0],
-                      [0, 1, 0, 0, 0, 0],
-                      [1, 1, 0, 0, 0, 0],
-                      [0, 0, 1, 0, 0, 0],
-                      [0, 0, 0, 1, 0, 0],
-                      [0, 0, 1, 1, 0, 0],
-                      [1, 0, 0, 0, 1, 0],
-                      [0, 1, 0, 0, 1, 0],
-                      [1, 1, 0, 0, 1, 0],
-                      [0, 0, 1, 0, 1, 0],
-                      [0, 0, 0, 1, 1, 0],
-                      [0, 0, 1, 1, 1, 0]])
-
-        y = np.array([[0, 1, 1, 1, 0],
-                      [1, 0, 1, 1, 0],
-                      [0, 0, 1, 1, 0],
-                      [1, 1, 0, 1, 0],
-                      [1, 1, 1, 0, 0],
-                      [1, 1, 0, 0, 0],
-                      [0, 0, 1, 1, 0],
-                      [0, 0, 1, 1, 0],
-                      [0, 0, 1, 1, 0],
-                      [1, 1, 0, 0, 0],
-                      [1, 1, 0, 0, 0],
-                      [1, 1, 0, 0, 0]])
-
-        # Apply X and y through n iterations where n is max speed of car
-        max_speed = 10
-        X_append = X
-        y_append = y
-        for speed in range(1, max_speed + 1):
-            X[:, 5] = speed
-            X_append = np.append(X_append, X, axis=0)
-            if speed == max_speed:
-                y[:, 4] = 1
-            y_append = np.append(y_append, y, axis=0)
-
-        X = X_append
-        y = y_append
-
-        X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, test_size=.2, random_state=5)
-
-        # View professor yu's labs.
-        # Use tensorflow for feed forward/backward prop adjustment
-        # and to collect the weights. Apply same for the predict
-        # Want to use y = wx + b
+            return self.sess.run(self.hypothesis, feed_dict={self.X_data : [data]})

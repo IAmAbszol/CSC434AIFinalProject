@@ -15,10 +15,11 @@ import numpy as np
 from bisect import bisect_left
 import sys, os
 from ai import network
+import tensorflow as tf
 
 OPTIMIZER = 0
-INPUT = 7
-HIDDEN = 12
+INPUT = 5
+HIDDEN = 32
 OUTPUT = 5
 
 
@@ -42,15 +43,18 @@ class GeneticAlgorithm:
             pass
 
         self.pool = pool_size
-        self.crossover_pool = 20
+        self.crossover_pool = 5
         self.first_run = True
         self.parent = self.bestParent = None
         self.strategy_pool = ["Create", "Mutate", "Crossover"]
         # takes ~13 seconds on testing system. Called once per class creation
         self.Geneset = list(frange(-5, 5, .001))
-        self.Genelength = OPTIMIZER + (INPUT * HIDDEN) + (HIDDEN * OUTPUT)
+        self.w1, self.b1, self.w2, self.b2 = self.load()
+        self.input = self.w1.shape[0]
+        self.hidden = self.w1.shape[1]
+        self.output = self.w2.shape[1]
+        self.Genelength = OPTIMIZER + len(self.numpytolinear((self.w1, self.b1, self.w2, self.b2)))
         self.maxAge = 10
-
         self.startTime = 0
         self.parents = []
         self.historicalFitnesses = []
@@ -85,24 +89,26 @@ class GeneticAlgorithm:
         return child
 
     def _create(self, length, geneset):
-        participant = self.Chromosome([0 for x in range(length)], sys.maxsize, "Create")
-        for i in range(length):
-            participant.Genes[i] = geneset[random.randrange(0, len(geneset))]
+        participant = self.Chromosome(np.append(np.array([1 for i in range(OPTIMIZER)]),
+                                                self.numpytolinear((self.w1, self.b1, self.w2, self.b2))), sys.maxsize,
+                                      "Create")
+        # for i in range(length):
+        #    participant.Genes[i] = geneset[random.randrange(0, len(geneset))]
         return participant
 
     def construct_cars(self, car_pos):
         if self.first_run:
             for i in range(self.pool):
-                yield self.CarSprite("images/car.png", car_pos, self._create(self.Genelength, self.Geneset))
+                yield self.CarSprite(self, "images/car.png", car_pos, self._create(self.Genelength, self.Geneset))
         else:
             for i in range(self.pool):
                 strategy = random.choice(self.strategy_pool)
                 if strategy is "Create":
-                    yield self.CarSprite("images/car.png", car_pos, self._create(self.Genelength, self.Geneset))
+                    yield self.CarSprite(self, "images/car.png", car_pos, self._create(self.Genelength, self.Geneset))
                 elif strategy is "Mutate":
-                    yield self.CarSprite("images/car.png", car_pos, self._mutate(self.parent, self.Geneset))
+                    yield self.CarSprite(self, "images/car.png", car_pos, self._mutate(self.parent, self.Geneset))
                 elif strategy is "Crossover":
-                    yield self.CarSprite("images/car.png", car_pos, self._crossover(
+                    yield self.CarSprite(self, "images/car.png", car_pos, self._crossover(
                         self.parents[random.randrange(0, len(self.parents))],
                         self.parents[random.randrange(0, len(self.parents))]))
 
@@ -132,7 +138,6 @@ class GeneticAlgorithm:
                                                 10 * participant.sit_time + \
                                                 5 * death_score + \
                                                 100 * turn_score
-
                 if participant.win:
                     participant.Chromosome.Fitness = 0
         else:
@@ -191,6 +196,70 @@ class GeneticAlgorithm:
             self.historicalFitnesses.append(self.bestParent.Fitness)
             self._display(child)
 
+    def load(self):
+        # Define initializers, used later for training predictions
+        # initialize to float32 for tensorflows used tensor datatype to be compatible
+        X_data = tf.placeholder(tf.float32, shape=[None, INPUT], name='x-inputdata')
+        y_target = tf.placeholder(tf.float32, shape=[None, OUTPUT], name='y-targetdata')
+
+        # Randomly distribute within the shape input_layer,hidden_layer --> -1 to 1
+        # https://www.tensorflow.org/api_docs/python/tf/random_uniform
+        weight_one = tf.Variable(tf.random_uniform([INPUT, HIDDEN], -1, 1), name="Weight_One")
+        weight_two = tf.Variable(tf.random_uniform([HIDDEN, OUTPUT], -1, 1), name="Weight_Two")
+
+        bias_one = tf.Variable(tf.zeros([HIDDEN]), name="Bias_One")
+        bias_two = tf.Variable(tf.zeros([OUTPUT]), name="Bias_Two")
+
+        with tf.name_scope("layer2") as scope:
+            synapse0 = tf.sigmoid(tf.matmul(X_data, weight_one) + bias_one, name="Synapse0")
+
+        with tf.name_scope("layer3") as scope:
+            hypothesis = tf.sigmoid(tf.matmul(synapse0, weight_two) + bias_two, name="Hypothesis")
+
+        with tf.name_scope("cost") as scope:
+            cost = tf.reduce_mean(((y_target * tf.log(hypothesis)) + ((1 - y_target) * tf.log(1.0 - hypothesis))) * -1,
+                                  name="Cost")
+
+        # Rationale behind GDO can be found on iamtrask NN
+        with tf.name_scope("train") as scope:
+            train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cost)
+
+        init = tf.global_variables_initializer()
+
+        # Save output of training
+        saver = tf.train.Saver()
+
+        with tf.Session() as sess:
+            saver.restore(sess, "./ai/models/pretrained_car.ckpt")
+
+             #weight_one, bias_one, weight_two, bias_two
+            return sess.run(weight_one), sess.run(bias_one), sess.run(weight_two), sess.run(bias_two)
+
+    # x - tuple of numpy arrays
+    # Returns linear numpy list
+    def numpytolinear(self, x):
+        master = x[0].flatten()
+        for ary in x[1:]:
+            master = np.append(master, ary.flatten())
+        return master
+
+    # x - linear numpy array of values
+    # Returns tuple of 4 numpy set of w1, b1, w2, b2
+    def lineartonumpy(self, x):
+        section_w1 = OPTIMIZER + (self.input * self.hidden)
+        section_b1 = section_w1 + self.hidden
+        section_w2 = section_b1 + (self.hidden * self.output)
+        section_b2 = section_w2 + self.output
+        w1 = np.array(x[OPTIMIZER:section_w1])
+        b1 = np.array(x[section_w1:section_b1])
+        w2 = np.array(x[section_b1:section_w2])
+        b2 = np.array(x[section_w2:section_b2])
+        w1 = w1.reshape((self.input, self.hidden))
+        b1 = b1.reshape((self.hidden,))
+        w2 = w2.reshape((self.hidden, self.output))
+        b2 = b2.reshape((self.output,))
+        return w1, b1, w2, b2
+
     class CarSprite(pygame.sprite.Sprite):
 
         MAX_FORWARD_SPEED = 10
@@ -198,7 +267,7 @@ class GeneticAlgorithm:
         ACCELERATION = 2
         TURN_SPEED = 10
 
-        def __init__(self, image, position, chromosome):
+        def __init__(self, genetic, image, position, chromosome):
             pygame.sprite.Sprite.__init__(self)
             self.src_image = pygame.image.load(image)
             self.position = position
@@ -210,7 +279,11 @@ class GeneticAlgorithm:
             self.alive = True
             self.win = False
             self.Chromosome = chromosome
-            self.Network = network.NeuralNetwork(chromosome.Genes[OPTIMIZER:], INPUT, HIDDEN, OUTPUT)
+
+            self.Genetic = genetic
+            w1, b1, w2, b2 = self.Genetic.lineartonumpy(self.Chromosome.Genes)
+            self.Network = network.NeuralNetwork(w1, b1, w2, b2, self.Genetic.input, self.Genetic.output)
+
 
         def update(self, deltat):
             # SIMULATION
@@ -233,6 +306,7 @@ class GeneticAlgorithm:
             self.image = pygame.transform.rotate(self.src_image, self.direction)
             self.rect = self.image.get_rect()
             self.rect.center = self.position
+            self.k_up = self.k_down = self.k_left = self.k_right = 0
 
         def decision(self, data):
             return self.Network.predict(data)

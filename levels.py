@@ -56,7 +56,7 @@ def level1():
         PadSprite('images/race_pads.png', (500, 768))
     ]
     trophies = [Trophy((900,150))]
-    return pads, trophies, (100,550)
+    return pads, trophies, (100,550), 10
 
 
 def level2():
@@ -81,7 +81,7 @@ def level2():
         PadSprite('images/race_pads.png', (500, 768))
     ]
     trophies = [Trophy((900, 150))]
-    return pads, trophies, (100, 550)
+    return pads, trophies, (100, 550), 10
 
 
 def level3():
@@ -114,7 +114,7 @@ def level3():
 
     trophies = [Trophy((285, 10))]
 
-    return pads, trophies, (35, 730)
+    return pads, trophies, (35, 730), 20
 
 def level4():
     pads = [
@@ -157,7 +157,7 @@ def level4():
 
     trophies = [Trophy((450, 320))]
 
-    return pads, trophies, (30, 730)
+    return pads, trophies, (30, 730), 20
 
 def level5():
     pads = [
@@ -204,4 +204,4 @@ def level5():
 
     trophies = [Trophy((450, 320))]
 
-    return pads, trophies, (30, 730)
+    return pads, trophies, (30, 730), 20
