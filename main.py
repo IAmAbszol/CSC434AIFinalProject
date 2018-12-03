@@ -26,7 +26,7 @@ class Main():
         self.pad_group = pygame.sprite.RenderPlain(*self.pads)
         self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
 
-        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=25)
+        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=10)
         self.cheat = False
 
     # Uses euclidean distance to return FORWARD, BACKWARD, LEFT, RIGHT euclidean distances
@@ -62,12 +62,13 @@ class Main():
     def calculate_closest_pad_by_direction(self, car):
         directions = [sys.maxsize for i in range(0, 4)]
         for pad in self.pads:
-            for scale in range(90):
+            for scale in range(20, 140):
             #scale = 90
                 for index, direction in enumerate(
                         self.projection(car.position[0], car.position[1], car.orientation, scale)):
                     if self.in_area(pad, direction[0], direction[1]) and directions[index] == sys.maxsize:
-                        directions[index] = scale
+                        directions[index] = (scale/10)
+                        #directions[index] = 1
 
         return directions
 
@@ -97,7 +98,7 @@ class Main():
                 pad_number, distance = tp, td
         return pad_number, distance
 
-    def run_level(self, level=3):
+    def run_level(self, level=4):
 
         # Fix for double run of 1
         if level == 1:
@@ -161,7 +162,7 @@ class Main():
                     predictions = cars[i].decision(data)
                     dir = predictions[:].argmax()
 #                    print("{} - {} --> {}".format(data, predictions, dir))
-#                    dir = 20
+#                    dir = -1
                     if dir == 0:
                         cars[i].k_up = 2
                     elif dir == 1:

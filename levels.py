@@ -157,7 +157,7 @@ def level4():
 
     trophies = [Trophy((450, 320))]
 
-    return pads, trophies, (30, 730), 20
+    return pads, trophies, (30, 730), 60
 
 def level5():
     pads = [

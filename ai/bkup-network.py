@@ -5,20 +5,20 @@ from sklearn import model_selection
 
 # compute sigmoid
 def sigmoid(x, derivative=False):
-    return 1 / (1 + np.exp(-x)) if not derivative else x * (1 - x)
+    return 1 / (1 + np.exp(-x)) if derivative else x * (1 - x)
 
 class NeuralNetwork:
 
     def __init__(self, w1, b1, w2, b2, input_layer, output_layer):
-        self.w1_np = np.asarray(w1, np.float32)
-        self.b1_np = np.asarray(b1, np.float32)
-        self.w2_np = np.asarray(w2, np.float32)
-        self.b2_np = np.asarray(b2, np.float32)
-        '''
-        w1_tf = tf.convert_to_tensor(self.w1_np, np.float32)
-        b1_tf = tf.convert_to_tensor(self.b1_np, np.float32)
-        w2_tf = tf.convert_to_tensor(self.w2_np, np.float32)
-        b2_tf = tf.convert_to_tensor(self.b2_np, np.float32)
+        w1_np = np.asarray(w1, np.float32)
+        b1_np = np.asarray(b1, np.float32)
+        w2_np = np.asarray(w2, np.float32)
+        b2_np = np.asarray(b2, np.float32)
+
+        w1_tf = tf.convert_to_tensor(w1_np, np.float32)
+        b1_tf = tf.convert_to_tensor(b1_np, np.float32)
+        w2_tf = tf.convert_to_tensor(w2_np, np.float32)
+        b2_tf = tf.convert_to_tensor(b2_np, np.float32)
 
         self.X_data = tf.placeholder(tf.float32, shape=[None, input_layer], name='x-inputdata')
 
@@ -42,9 +42,7 @@ class NeuralNetwork:
 
         self.sess = tf.Session()
         self.sess.run(self.init)
-        '''
 
     def predict(self, data):
-        layer1 = sigmoid((np.dot(data, self.w1_np) + self.b1_np))
-        layer2 = sigmoid((np.dot(layer1, self.w2_np) + self.b2_np))
-        return layer2
+
+            return self.sess.run(self.hypothesis, feed_dict={self.X_data : [data]})

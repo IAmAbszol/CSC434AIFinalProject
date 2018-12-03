@@ -11,6 +11,7 @@ import pygame
 import math
 import datetime
 import random
+import os
 import numpy as np
 from bisect import bisect_left
 import sys, os
@@ -48,11 +49,8 @@ class GeneticAlgorithm:
         self.parent = self.bestParent = None
         self.strategy_pool = ["Create", "Mutate", "Crossover"]
         # takes ~13 seconds on testing system. Called once per class creation
-        self.Geneset = list(frange(-5, 5, .001))
+        self.Geneset = list(frange(-5, 5, .000001))
         self.w1, self.b1, self.w2, self.b2 = self.load()
-        self.input = self.w1.shape[0]
-        self.hidden = self.w1.shape[1]
-        self.output = self.w2.shape[1]
         self.Genelength = OPTIMIZER + len(self.numpytolinear((self.w1, self.b1, self.w2, self.b2)))
         self.maxAge = 10
         self.startTime = 0
@@ -63,7 +61,9 @@ class GeneticAlgorithm:
 
     def _display(self, candidate):
         file = open("log.txt", "a")
-        file.write("Fitness: {} - Strategy: {} - {} - Genes: {}\n".format(candidate.Fitness, candidate.Strategy, (datetime.datetime.now() - self.startTime), candidate.Genes))
+        file.write("Fitness: {} - Strategy: {} - {} - Genes: {}\n".format(candidate.Fitness, candidate.Strategy,
+                                                                          (datetime.datetime.now() - self.startTime),
+                                                                          candidate.Genes))
         file.close()
 
     def _crossover(self, participant_a, participant_b):
@@ -90,7 +90,7 @@ class GeneticAlgorithm:
 
     def _create(self, length, geneset):
         participant = self.Chromosome(np.append(np.array([1 for i in range(OPTIMIZER)]),
-                                                self.numpytolinear((self.w1, self.b1, self.w2, self.b2))), sys.maxsize,
+                                                self.numpytolinear((self.w1, self.b1, self.w2, self.b2))), 0,
                                       "Create")
         # for i in range(length):
         #    participant.Genes[i] = geneset[random.randrange(0, len(geneset))]
@@ -108,40 +108,20 @@ class GeneticAlgorithm:
                 elif strategy is "Mutate":
                     yield self.CarSprite(self, "images/car.png", car_pos, self._mutate(self.parent, self.Geneset))
                 elif strategy is "Crossover":
-                    yield self.CarSprite(self, "images/car.png", car_pos, self._crossover(
+                    yield self.CarSprite(self, "images/car.png", car_pos, self._mutate(self._crossover(
                         self.parents[random.randrange(0, len(self.parents))],
-                        self.parents[random.randrange(0, len(self.parents))]))
+                        self.parents[random.randrange(0, len(self.parents))]), self.Geneset))
 
     # parameters required such as distance, etc. Possibly capture within car?
     def get_fitness(self, participants, data, car=True):
         if car:
             for index, participant in enumerate(participants):
-                death_score = 0
                 if not participant.alive:
-                    # Evaluate death
-                    death_turn = participant.history[-1].Turn
-                    for index, d in enumerate(participant.history[-1].Distances):
-                        # Case 1 - Score 2 (Worst), turn selected was into a wall =/
-                        if d == 1 and death_turn == index:
-                            death_score += 2
-                        # Case 2 - Score 1 (Best), turn NOT selected that would've led into wall
-                        if d == 1 and not death_turn == index:
-                            death_score += 0
-                        # Case 3 - Score 0 (Medium), turn NOT selected that would've led safely
-                        if d == 0 and not death_turn == index:
-                            death_score += 1
-
-                turns = [history.Turn for history in participant.history]
-                turn_score = len(turns) - len(set(turns))
-                participant.Chromosome.Fitness = euclidean((participant.position[0],
-                                                data[0]), (participant.position[1], data[1])) + \
-                                                10 * participant.sit_time + \
-                                                5 * death_score + \
-                                                100 * turn_score
+                    participant.Chromosome.Fitness = len(set(list(zip([history.X for history in participant.history], [history.Y for history in participant.history]))))
                 if participant.win:
-                    participant.Chromosome.Fitness = 0
+                    participant.Chromosome.Fitness += 1000
         else:
-            participants.Fitness = sys.maxsize
+            participants.Fitness = 0
         return participants
 
     def evaluate_performance(self, participants, data):
@@ -197,6 +177,13 @@ class GeneticAlgorithm:
             self._display(child)
 
     def load(self):
+        if not os.path.isdir("ai/models/"):
+            print("GENETIC: ai/models/ directory not found. Resorting to self-create.")
+            length = (INPUT * HIDDEN) + (HIDDEN) + (HIDDEN * OUTPUT) + OUTPUT
+            genes = []
+            for i in range(length):
+                genes.append(self.Geneset[random.randrange(0, len(self.Geneset))])
+            return self.lineartonumpy(genes)
         # Define initializers, used later for training predictions
         # initialize to float32 for tensorflows used tensor datatype to be compatible
         X_data = tf.placeholder(tf.float32, shape=[None, INPUT], name='x-inputdata')
@@ -232,7 +219,7 @@ class GeneticAlgorithm:
         with tf.Session() as sess:
             saver.restore(sess, "./ai/models/pretrained_car.ckpt")
 
-             #weight_one, bias_one, weight_two, bias_two
+            # weight_one, bias_one, weight_two, bias_two
             return sess.run(weight_one), sess.run(bias_one), sess.run(weight_two), sess.run(bias_two)
 
     # x - tuple of numpy arrays
@@ -246,18 +233,18 @@ class GeneticAlgorithm:
     # x - linear numpy array of values
     # Returns tuple of 4 numpy set of w1, b1, w2, b2
     def lineartonumpy(self, x):
-        section_w1 = OPTIMIZER + (self.input * self.hidden)
-        section_b1 = section_w1 + self.hidden
-        section_w2 = section_b1 + (self.hidden * self.output)
-        section_b2 = section_w2 + self.output
+        section_w1 = OPTIMIZER + (INPUT * HIDDEN)
+        section_b1 = section_w1 + HIDDEN
+        section_w2 = section_b1 + (HIDDEN * OUTPUT)
+        section_b2 = section_w2 + OUTPUT
         w1 = np.array(x[OPTIMIZER:section_w1])
         b1 = np.array(x[section_w1:section_b1])
         w2 = np.array(x[section_b1:section_w2])
         b2 = np.array(x[section_w2:section_b2])
-        w1 = w1.reshape((self.input, self.hidden))
-        b1 = b1.reshape((self.hidden,))
-        w2 = w2.reshape((self.hidden, self.output))
-        b2 = b2.reshape((self.output,))
+        w1 = w1.reshape((INPUT, HIDDEN))
+        b1 = b1.reshape((HIDDEN,))
+        w2 = w2.reshape((HIDDEN, OUTPUT))
+        b2 = b2.reshape((OUTPUT,))
         return w1, b1, w2, b2
 
     class CarSprite(pygame.sprite.Sprite):
@@ -282,8 +269,7 @@ class GeneticAlgorithm:
 
             self.Genetic = genetic
             w1, b1, w2, b2 = self.Genetic.lineartonumpy(self.Chromosome.Genes)
-            self.Network = network.NeuralNetwork(w1, b1, w2, b2, self.Genetic.input, self.Genetic.output)
-
+            self.Network = network.NeuralNetwork(w1, b1, w2, b2, INPUT, OUTPUT)
 
         def update(self, deltat):
             # SIMULATION
@@ -315,7 +301,8 @@ class GeneticAlgorithm:
             return [self.position[0], self.position[1], self.speed, self.direction]
 
         def add_history(self, turn, time=None, distances=None):
-            self.history.append(History(self.position[0], self.position[1], self.distance, turn, time=time, distances=distances))
+            self.history.append(
+                History(self.position[0], self.position[1], self.distance, turn, time=time, distances=distances))
 
     class Chromosome:
 
@@ -326,7 +313,7 @@ class GeneticAlgorithm:
             self.Age = 0
 
         def __gt__(self, other):
-            return self.Fitness < other.Fitness
+            return self.Fitness > other.Fitness
 
         def __str__(self):
             return "Genes : {} - Fitness : {}.".format(self.Genes, self.Fitness)
@@ -340,7 +327,6 @@ class History:
         self.Turn = turn_choice
         self.Time = time
         self.Distances = distances
-
 
     def get_history(self):
         return self.X, self.Y, self.Distance, self.Turn, self.Time, self.Distances

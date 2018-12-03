@@ -38,9 +38,9 @@ for row in X:
             y_label = np.append(y_label, [y_label_list], axis=0)
             break
         # Adjust number after testing -> Does this change occur by division of 10
-        if element <= 7 and element in [0,1]: 
+        if element <= 10 and element in [0,1]: 
             y_label_list.append(0)
-        if element <= 4 and element in [2,3]: 
+        if element <= 6 and element in [2,3]: 
             y_label_list.append(0)
         else:
             y_label_list.append(1)
