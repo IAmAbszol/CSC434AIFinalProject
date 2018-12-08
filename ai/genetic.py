@@ -11,12 +11,14 @@ import pygame
 import math
 import datetime
 import random
-import os
 import numpy as np
-from bisect import bisect_left
-import sys, os
-from ai import network
 import tensorflow as tf
+import os
+
+from bisect import bisect_left
+
+from ai import network
+from ai.report import Report
 
 OPTIMIZER = 0
 INPUT = 4
@@ -60,11 +62,17 @@ class GeneticAlgorithm:
         self.lastParentIndex = (self.crossover_pool - 1) if self.crossover_pool < pool_size else (pool_size - 1)
         self.pIndex = 1
 
+        self.generations = 0
+
+        self.reporting = Report()
+        self.generations_reporting = Report()
+
     def _display(self, candidate):
         file = open("log.txt", "a")
         file.write("Fitness: {} - Strategy: {} - {} - Genes: {}\n".format(candidate.Fitness, candidate.Strategy,
                                                                           (datetime.datetime.now() - self.startTime),
                                                                           candidate.Genes))
+        self.reporting.add_history((datetime.datetime.now() - self.startTime).total_seconds(), candidate.Fitness)
         file.close()
 
     def _crossover(self, participant_a, participant_b):
@@ -101,10 +109,13 @@ class GeneticAlgorithm:
                 participant.Genes[i] = geneset[random.randrange(0, len(geneset))]
         return participant
 
-    def construct_cars(self, car_pos):
+    def construct_cars(self, car_pos, genes=None):
         if self.first_run:
             for i in range(self.pool):
-                yield self.CarSprite(self, "images/car.png", car_pos, self._create(self.Genelength, self.Geneset))
+                if genes is None:
+                    yield self.CarSprite(self, "images/car.png", car_pos, self._create(self.Genelength, self.Geneset))
+                else:
+                    yield self.CarSprite(self, "images/car.png", car_pos, self.Chromosome(genes, 0, "Create"))
         else:
             for i in range(self.pool):
                 strategy = random.choice(self.strategy_pool)
@@ -127,15 +138,22 @@ class GeneticAlgorithm:
                                      [history.Y for history in participant.history]))))
 									 
                 if participant.win:
-                    participant.Chromosome.Fitness += 10000
+                    participant.Chromosome.Fitness += 1000
         else:
             participants.Fitness = 0
         return participants
 
-    def evaluate_performance(self, participants, data):
+    def evaluate_performance(self, participants, data, noevolve=False):
+        # Poor but entire code needs to be reconstructed, due to limited time this will stay.
+        if noevolve:
+            self.first_run = True
+            return
         participants = self.get_fitness(participants, data)
         participants_genes = [i.Chromosome for i in participants]
         sorted_participants = sorted(participants_genes, reverse=True)
+        # Report generations vs best fitness
+        self.generations_reporting.add_history(self.generations, sorted_participants[0].Fitness)
+        self.generations += 1
         if self.first_run:
             self.startTime = datetime.datetime.now()
             self.bestParent = self._create(self.Genelength, self.Geneset)
@@ -254,6 +272,10 @@ class GeneticAlgorithm:
         w2 = w2.reshape((HIDDEN, OUTPUT))
         b2 = b2.reshape((OUTPUT,))
         return w1, b1, w2, b2
+
+    def display_report(self):
+        self.reporting.show(head="Time vs Fitness")
+        self.generations_reporting.show(head="Generations vs Fitness", xlabel="Generations", ylabel="Fitness")
 
     class CarSprite(pygame.sprite.Sprite):
 

@@ -1,5 +1,6 @@
 # initialize the screen
-import pygame, math, sys, time, numpy as np
+import pygame, math, sys, time
+import random
 from pygame.locals import *
 from shapely.geometry import Polygon
 
@@ -9,7 +10,7 @@ import levels
 
 class Main():
 
-    def __init__(self):
+    def __init__(self, pool=250):
         pygame.init()
         self.screen = pygame.display.set_mode((1024, 768))
         # GAME CLOCK
@@ -24,9 +25,9 @@ class Main():
         pygame.mixer.music.load('My_Life_Be_Like.mp3')
 
         self.pads, self.trophies, self.car_pos, self.global_time = 0, 0, 0, 0
+        self.level = [levels.level1(), levels.level2()]
 
-        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=100)
-        self.cheat = False
+        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=pool)
 
     # Uses euclidean distance to return FORWARD, BACKWARD, LEFT, RIGHT euclidean distances
     def projection(self, x, y, orientation, scalar):
@@ -97,26 +98,17 @@ class Main():
                 pad_number, distance = tp, td
         return pad_number, distance
 
-    def run_level(self, level=3):
+    def run_level(self, noevolve=False, genes=None, level=None):
 
-        # Fix for double run of 1
-        if level == 1:
-            self.pads, self.trophies, self.car_pos, self.global_time = levels.training_level1()
-        elif level == 2:
-            self.pads, self.trophies, self.car_pos, self.global_time = levels.level2()
-        elif level == 3:
-            self.pads, self.trophies, self.car_pos, self.global_time = levels.level3()
-        elif level == 4:
-            self.pads, self.trophies, self.car_pos, self.global_time = levels.level4()
-        elif level == 5:
-            self.pads, self.trophies, self.car_pos, self.global_time = levels.level5()
+        if level is None:
+            self.pads, self.trophies, self.car_pos, self.global_time = self.level[random.randint(0, len(self.level) - 1)]
 
         self.pad_group = pygame.sprite.RenderPlain(*self.pads)
         self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
 
         self.win_condition = None
         t0 = time.time()
-        cars = list(self.genetic_algorithm.construct_cars(self.car_pos))
+        cars = list(self.genetic_algorithm.construct_cars(self.car_pos, genes=genes))
         car_group = pygame.sprite.RenderPlain(*cars)
 
         self.generation = self.small_font.render('Generation ' + str(self.current_generation), False, (255, 0, 0))
@@ -128,29 +120,18 @@ class Main():
                 if not hasattr(event, 'key'): continue
                 if event.key == K_ESCAPE:
                     print("Exiting AI.")
+                    self.genetic_algorithm.display_report()
                     sys.exit(0)
 
             # Main iteration loop
             computation_time = time.time()
             for i in range(len(cars)):
                 if cars[i].alive:
-                    # if event.key == K_SPACE:
-#                    down = event.type == KEYDOWN
                     if self.win_condition:
                         pygame.mixer.music.stop()
                         self.genetic_algorithm.evaluate_performance(cars,
-                                                                    (self.trophies[0].rect.x, self.trophies[0].rect.y))
-                        self.run_level(level=(level))
-                    '''
-                    if event.key == K_RIGHT:
-                        cars[i].k_right = down * -5
-                    elif event.key == K_LEFT:
-                        cars[i].k_left = down * 5
-                    elif event.key == K_UP:
-                        cars[i].k_up = down * 2
-                    elif event.key == K_DOWN:
-                        cars[i].k_down = down * -2
-                    '''
+                                                                    (self.trophies[0].rect.x, self.trophies[0].rect.y), noevolve=noevolve)
+                        self.run_level(genes=genes)
                     car_data = cars[i].get_car_data()
                     distances = self.calculate_closest_pad_by_direction(cars[i])
                     data = [
@@ -161,8 +142,6 @@ class Main():
                     ]
                     predictions = cars[i].decision(data)
                     dir = predictions[:].argmax()
-#                    print("{} - {} --> {}".format(data, predictions, dir))
-#                    dir = -1
                     if dir == 0:
                         cars[i].k_up = 2
                     elif dir == 1:
@@ -195,9 +174,9 @@ class Main():
                         if len(set(list(zip([history.X for history in car.history], [history.Y for history in car.history])))) > 10:
                             car.alive = False
                     self.genetic_algorithm.evaluate_performance(cars,
-                                                                (self.trophies[0].rect.x, self.trophies[0].rect.y))
+                                                                (self.trophies[0].rect.x, self.trophies[0].rect.y), noevolve=noevolve)
                     self.current_generation += 1
-                    self.run_level(level)
+                    self.run_level(genes=genes)
 
             # RENDERING
             self.screen.fill((0, 0, 0))
@@ -212,9 +191,9 @@ class Main():
             if len(car_group) == 0:
                 # win_condition = False
                 self.genetic_algorithm.evaluate_performance(cars,
-                                                            (self.trophies[0].rect.x, self.trophies[0].rect.y))
+                                                            (self.trophies[0].rect.x, self.trophies[0].rect.y), noevolve=noevolve)
                 self.current_generation += 1
-                self.run_level(level)
+                self.run_level(genes=genes)
 
             trophy_collision = pygame.sprite.groupcollide(car_group, self.trophy_group, False, True)
             if trophy_collision != {}:
