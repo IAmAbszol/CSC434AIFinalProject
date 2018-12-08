@@ -34,6 +34,27 @@ class Trophy(pygame.sprite.Sprite):
     def draw(self, screen):
         screen.blit(self.image, self.rect)
 
+def training_level1():
+    pads = [
+        PadSprite('images/vertical_pads.png', (200, 400)),
+        PadSprite('images/vertical_pads.png', (200, 600)),
+        PadSprite('images/vertical_pads.png', (700, 0)),
+        PadSprite('images/vertical_pads.png', (700, 400)),
+
+        PadSprite('images/small_vertical.png', (0, 250)),
+        PadSprite('images/vertical_pads.png', (0, 525)),
+        PadSprite('images/vertical_pads.png', (0, 0)),
+        PadSprite('images/vertical_pads.png', (1024, 250)),
+        PadSprite('images/vertical_pads.png', (1024, 525)),
+        PadSprite('images/race_pads.png', (250, 0)),
+        PadSprite('images/race_pads.png', (760, 0)),
+        PadSprite('images/race_pads.png', (500, 0)),
+        PadSprite('images/race_pads.png', (250, 768)),
+        PadSprite('images/race_pads.png', (760, 768)),
+        PadSprite('images/race_pads.png', (500, 768))
+    ]
+    trophies = [Trophy((900, 150))]
+    return pads, trophies, (75, 700), 30
 
 def level1():
     pads = [
@@ -81,10 +102,10 @@ def level2():
         PadSprite('images/race_pads.png', (500, 768))
     ]
     trophies = [Trophy((900, 150))]
-    return pads, trophies, (100, 550), 10
+    return pads, trophies, (100, 550), 20
 
 
-def level3():
+def level4():
     pads = [
         PadSprite('images/race_pads.png', (0,10)),
         PadSprite('images/race_pads.png', (600, 10)),
@@ -114,9 +135,9 @@ def level3():
 
     trophies = [Trophy((285, 10))]
 
-    return pads, trophies, (35, 730), 20
+    return pads, trophies, (35, 730), 60
 
-def level4():
+def level3():
     pads = [
         PadSprite('images/vertical_pads.png', (0, 100)),
         PadSprite('images/vertical_pads.png', (0, 200)),

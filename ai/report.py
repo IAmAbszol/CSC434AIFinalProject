@@ -1,0 +1,1 @@
+# Use this as a reporting feature from training, only report from which goes to log.txt

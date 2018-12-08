@@ -1,6 +1,7 @@
 # initialize the screen
 import pygame, math, sys, time, numpy as np
 from pygame.locals import *
+from shapely.geometry import Polygon
 
 from ai import genetic
 import levels
@@ -22,53 +23,51 @@ class Main():
         self.generation = self.small_font.render('Generation ' + str(self.current_generation), False, (255, 0, 0))
         pygame.mixer.music.load('My_Life_Be_Like.mp3')
 
-        self.pads, self.trophies, self.car_pos, self.global_time = levels.level1()
-        self.pad_group = pygame.sprite.RenderPlain(*self.pads)
-        self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
+        self.pads, self.trophies, self.car_pos, self.global_time = 0, 0, 0, 0
 
-        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=10)
+        self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=100)
         self.cheat = False
 
     # Uses euclidean distance to return FORWARD, BACKWARD, LEFT, RIGHT euclidean distances
     def projection(self, x, y, orientation, scalar):
-        # forward
-        o_x = round(math.cos(math.radians(orientation)) * scalar, 3)
-        o_y = round(math.sin(math.radians(orientation)) * scalar, 3)
-        set_d1 = (x + o_x), \
-                 (y - o_y)
-        # backward
-        set_d2 = (x + o_x), \
-                 (y + o_y)
-
-        # left/right requires orientation swap
-        d_orientation = (orientation - 90) % 360
+        # LHS Triangle
+        d_orientation = (orientation + 50) % 360
         o_x = round(math.cos(math.radians(d_orientation)) * scalar, 3)
         o_y = round(math.sin(math.radians(d_orientation)) * scalar, 3)
-        # left
-        set_d3 = (x - o_x), \
-                 (y + o_y)
-        # right
-        set_d4 = (x + o_x), \
+        set_d1 = (x + o_x), \
                  (y - o_y)
+        # RHS
+        d_orientation = (orientation - 50) % 360
+        o_x = round(math.cos(math.radians(d_orientation)) * scalar, 3)
+        o_y = round(math.sin(math.radians(d_orientation)) * scalar, 3)
+        set_d2 = (x + o_x), \
+                 (y - o_y)
+        return set_d1, set_d2
 
-        return set_d1, set_d2, set_d3, set_d4
-
-    def in_area(self, pad, dx, dy):
-        if pad.rect.topleft[0] <= dx <= pad.rect.topright[0]:
-            if pad.rect.topleft[1] <= dy <= pad.rect.bottomleft[1]:
-                return True
-        return False
+    def in_area(self, car, pad, x1, y1, x2, y2):
+        p1 = Polygon([(car.position[0], car.position[1]),
+                      (x1, y1),
+                      ((x1 + x2) / 2, (y1 + y2) / 2)])
+        p2 = Polygon([(car.position[0], car.position[1]),
+                      (x2, y2),
+                      ((x1 + x2) / 2, (y1 + y2) / 2)])
+        r1 = Polygon([pad.rect.topleft, pad.rect.topright, pad.rect.bottomright, pad.rect.bottomleft])
+        return p1.intersection(r1).area, p2.intersection(r1).area
 
     def calculate_closest_pad_by_direction(self, car):
-        directions = [sys.maxsize for i in range(0, 4)]
+        directions = [0 for i in range(0, 3)]
         for pad in self.pads:
-            for scale in range(20, 140):
-            #scale = 90
-                for index, direction in enumerate(
-                        self.projection(car.position[0], car.position[1], car.orientation, scale)):
-                    if self.in_area(pad, direction[0], direction[1]) and directions[index] == sys.maxsize:
-                        directions[index] = (scale/10)
-                        #directions[index] = 1
+            # Allows for change in spread
+            scale = 30 * car.speed
+            lhs, rhs = self.projection(car.position[0], car.position[1], car.orientation, scale)
+
+            t_lhs, t_rhs = self.in_area(car, pad, lhs[0], lhs[1], rhs[0], rhs[1])
+            if t_lhs > 0:
+                directions[1] = t_lhs
+            if t_rhs > 0:
+                directions[2] = t_rhs
+            if sum(directions) == (t_lhs + t_rhs) and t_lhs > 0 and t_rhs > 0:
+                directions[0] = 1
 
         return directions
 
@@ -98,11 +97,11 @@ class Main():
                 pad_number, distance = tp, td
         return pad_number, distance
 
-    def run_level(self, level=4):
+    def run_level(self, level=3):
 
         # Fix for double run of 1
         if level == 1:
-            self.pads, self.trophies, self.car_pos, self.global_time = levels.level1()
+            self.pads, self.trophies, self.car_pos, self.global_time = levels.training_level1()
         elif level == 2:
             self.pads, self.trophies, self.car_pos, self.global_time = levels.level2()
         elif level == 3:
@@ -139,6 +138,8 @@ class Main():
 #                    down = event.type == KEYDOWN
                     if self.win_condition:
                         pygame.mixer.music.stop()
+                        self.genetic_algorithm.evaluate_performance(cars,
+                                                                    (self.trophies[0].rect.x, self.trophies[0].rect.y))
                         self.run_level(level=(level))
                     '''
                     if event.key == K_RIGHT:
@@ -156,8 +157,7 @@ class Main():
                             distances[0],
                             distances[1],
                             distances[2],
-                            distances[3],
-                            cars[i].speed,
+							cars[i].speed,
                     ]
                     predictions = cars[i].decision(data)
                     dir = predictions[:].argmax()
@@ -166,11 +166,16 @@ class Main():
                     if dir == 0:
                         cars[i].k_up = 2
                     elif dir == 1:
-                        cars[i].k_down = -2
-                    elif dir == 2:
                         cars[i].k_left = 5
-                    elif dir == 3:
+                    elif dir == 2:
                         cars[i].k_right = -5
+                    # Turn quite hard, wall approaching
+                    elif dir == 3:
+                        cars[i].k_left = 10
+                    elif dir == 4:
+                        cars[i].k_right = 10
+                    elif dir == 5:
+                        cars[i].k_down = 2
 
                 cars[i].add_history(dir, distances=distances)
 
@@ -186,6 +191,9 @@ class Main():
                 timer_text = self.font.render(str(seconds), True, (255, 255, 0))
                 if seconds <= 0:
                     self.win_condition = False
+                    for car in cars:
+                        if len(set(list(zip([history.X for history in car.history], [history.Y for history in car.history])))) > 10:
+                            car.alive = False
                     self.genetic_algorithm.evaluate_performance(cars,
                                                                 (self.trophies[0].rect.x, self.trophies[0].rect.y))
                     self.current_generation += 1
@@ -201,16 +209,17 @@ class Main():
                         if c is car:
                             cars[index].alive = False
                     car_group.remove(car)
-                if len(car_group) == 0:
-                    # win_condition = False
-                    self.genetic_algorithm.evaluate_performance(cars,
-                                                                (self.trophies[0].rect.x, self.trophies[0].rect.y))
-                    self.current_generation += 1
-                    self.run_level(level)
+            if len(car_group) == 0:
+                # win_condition = False
+                self.genetic_algorithm.evaluate_performance(cars,
+                                                            (self.trophies[0].rect.x, self.trophies[0].rect.y))
+                self.current_generation += 1
+                self.run_level(level)
 
             trophy_collision = pygame.sprite.groupcollide(car_group, self.trophy_group, False, True)
             if trophy_collision != {}:
                 for car in trophy_collision:
+                    car.win = True
                     car_group.empty()
                     car_group.add(car)
                     seconds = seconds
@@ -232,3 +241,8 @@ class Main():
             self.screen.blit(self.loss_text, (250, 700))
             self.screen.blit(self.generation, (850, 60))
             pygame.display.flip()
+
+            # Remove bad cars
+            for index, c in enumerate(cars):
+                if not c.alive:
+                    car_group.remove(c)

@@ -19,9 +19,9 @@ from ai import network
 import tensorflow as tf
 
 OPTIMIZER = 0
-INPUT = 5
-HIDDEN = 32
-OUTPUT = 5
+INPUT = 4
+HIDDEN = 12
+OUTPUT = 6
 
 
 def frange(x, y, jump):
@@ -44,15 +44,16 @@ class GeneticAlgorithm:
             pass
 
         self.pool = pool_size
-        self.crossover_pool = 5
+        self.crossover_pool = 25
         self.first_run = True
         self.parent = self.bestParent = None
         self.strategy_pool = ["Create", "Mutate", "Crossover"]
         # takes ~13 seconds on testing system. Called once per class creation
         self.Geneset = list(frange(-5, 5, .000001))
+        self.loaded_model = False
         self.w1, self.b1, self.w2, self.b2 = self.load()
         self.Genelength = OPTIMIZER + len(self.numpytolinear((self.w1, self.b1, self.w2, self.b2)))
-        self.maxAge = 10
+        self.maxAge = 5
         self.startTime = 0
         self.parents = []
         self.historicalFitnesses = []
@@ -89,11 +90,15 @@ class GeneticAlgorithm:
         return child
 
     def _create(self, length, geneset):
-        participant = self.Chromosome(np.append(np.array([1 for i in range(OPTIMIZER)]),
-                                                self.numpytolinear((self.w1, self.b1, self.w2, self.b2))), 0,
-                                      "Create")
-        # for i in range(length):
-        #    participant.Genes[i] = geneset[random.randrange(0, len(geneset))]
+        if self.loaded_model:
+            self.loaded_model = False
+            participant = self.Chromosome(np.append(np.array([1 for i in range(OPTIMIZER)]),
+                                                    self.numpytolinear((self.w1, self.b1, self.w2, self.b2))), 0,
+                                          "Create")
+        else:
+            participant = self.Chromosome([i for i in range(length)], 0, "Create")
+            for i in range(length):
+                participant.Genes[i] = geneset[random.randrange(0, len(geneset))]
         return participant
 
     def construct_cars(self, car_pos):
@@ -116,10 +121,13 @@ class GeneticAlgorithm:
     def get_fitness(self, participants, data, car=True):
         if car:
             for index, participant in enumerate(participants):
-                if not participant.alive:
-                    participant.Chromosome.Fitness = len(set(list(zip([history.X for history in participant.history], [history.Y for history in participant.history]))))
+                if participant.distance > 0:
+                    participant.Chromosome.Fitness = len(
+                        set(list(zip([history.X for history in participant.history],
+                                     [history.Y for history in participant.history]))))
+									 
                 if participant.win:
-                    participant.Chromosome.Fitness += 1000
+                    participant.Chromosome.Fitness += 10000
         else:
             participants.Fitness = 0
         return participants
@@ -131,7 +139,6 @@ class GeneticAlgorithm:
         if self.first_run:
             self.startTime = datetime.datetime.now()
             self.bestParent = self._create(self.Genelength, self.Geneset)
-            self.get_fitness(self.bestParent, data, car=False)
             self.parents = [self.bestParent]
             self.historicalFitnesses = [self.bestParent.Fitness]
 
@@ -184,6 +191,7 @@ class GeneticAlgorithm:
             for i in range(length):
                 genes.append(self.Geneset[random.randrange(0, len(self.Geneset))])
             return self.lineartonumpy(genes)
+        self.loaded_model = True
         # Define initializers, used later for training predictions
         # initialize to float32 for tensorflows used tensor datatype to be compatible
         X_data = tf.placeholder(tf.float32, shape=[None, INPUT], name='x-inputdata')
@@ -249,10 +257,8 @@ class GeneticAlgorithm:
 
     class CarSprite(pygame.sprite.Sprite):
 
-        MAX_FORWARD_SPEED = 10
-        MAX_REVERSE_SPEED = 10
-        ACCELERATION = 2
-        TURN_SPEED = 10
+        MAX_FORWARD_SPEED = 4
+        MAX_REVERSE_SPEED = 2
 
         def __init__(self, genetic, image, position, chromosome):
             pygame.sprite.Sprite.__init__(self)
@@ -286,6 +292,8 @@ class GeneticAlgorithm:
             cur_y = y
             x += -self.speed * math.sin(rad)
             y += -self.speed * math.cos(rad)
+            if cur_x == x and cur_y == y and self.distance == 0:
+                self.alive = False
             self.distance += euclidean((cur_x, x), (cur_y, y))
             self.sit_time += 1 if cur_x == x and cur_y == y else 0
             self.position = (x, y)
