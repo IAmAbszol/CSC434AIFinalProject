@@ -1,4 +1,4 @@
-import pygame, math, sys, time, end, main
+import pygame, math, sys, time, main
 from pygame.locals import *
 
 import argparse
@@ -25,7 +25,10 @@ while 1:
                             # multi evaluation
                             gene_list = f.readlines()[0][1:-2]
                             genes = [float(i) for i in gene_list.split(",")]
-                    main_game = main.Main(int(args["pool"]) if not args["pool"] is None else None)
+                    if args["pool"] is None:
+                        main_game = main.Main()
+                    else:
+                        main_game = main.Main(pool=int(args["pool"]))
                     main_game.run_level(noevolve=args["noevolve"], genes=genes)
                 elif event.key == K_ESCAPE: sys.exit(0)  
     img = pygame.image.load("images/main_menu_image.png")

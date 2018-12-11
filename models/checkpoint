@@ -1,2 +1,0 @@
-model_checkpoint_path: "pretrained_car.ckpt"
-all_model_checkpoint_paths: "pretrained_car.ckpt"

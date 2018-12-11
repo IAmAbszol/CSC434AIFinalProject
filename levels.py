@@ -74,7 +74,7 @@ def level1():
 
     trophies = [Trophy((450, 320))]
 
-    return pads, trophies, (970, 730), 60
+    return 1, pads, trophies, (970, 730), 60
 
 def level2():
     pads = [
@@ -117,4 +117,62 @@ def level2():
 
     trophies = [Trophy((450, 320))]
 
-    return pads, trophies, (30, 730), 60
+    return 2, pads, trophies, (30, 730), 60
+
+
+def level3():
+    pads = [
+        PadSprite('images/race_pads.png', (800, 150)),
+        PadSprite('images/race_pads.png', (800, 375)),
+        PadSprite('images/race_pads.png', (800, 625)),
+        PadSprite('images/race_pads.png', (800, 675)),
+        PadSprite('images/race_pads.png', (800, 575)),
+        PadSprite('images/race_pads.png', (200, 150)),
+        PadSprite('images/race_pads.png', (200, 675)),
+        PadSprite('images/race_pads.png', (200, 575)),
+        PadSprite('images/race_pads.png', (200, 375)),
+        PadSprite('images/race_pads.png', (200, 625)),
+        PadSprite('images/small_vertical.png', (450, 260)),
+
+        PadSprite('images/vertical_pads.png', (0, 250)),
+        PadSprite('images/vertical_pads.png', (0, 525)),
+        PadSprite('images/vertical_pads.png', (1024, 250)),
+        PadSprite('images/vertical_pads.png', (1024, 525)),
+        PadSprite('images/race_pads.png', (250, 0)),
+        PadSprite('images/race_pads.png', (760, 0)),
+        PadSprite('images/race_pads.png', (500, 0)),
+        PadSprite('images/race_pads.png', (250, 768)),
+        PadSprite('images/race_pads.png', (760, 768)),
+        PadSprite('images/race_pads.png', (500, 768))
+    ]
+    trophies = [Trophy((490, 50))]
+    return 3, pads, trophies, (490, 700), 30
+
+	
+def level4():
+    pads = [
+        PadSprite('images/race_pads.png', (800, 150)),
+        PadSprite('images/race_pads.png', (800, 375)),
+        PadSprite('images/race_pads.png', (800, 625)),
+        PadSprite('images/race_pads.png', (800, 675)),
+        PadSprite('images/race_pads.png', (800, 575)),
+        PadSprite('images/race_pads.png', (200, 150)),
+        PadSprite('images/race_pads.png', (200, 675)),
+        PadSprite('images/race_pads.png', (200, 575)),
+        PadSprite('images/race_pads.png', (200, 375)),
+        PadSprite('images/race_pads.png', (200, 625)),
+        PadSprite('images/small_vertical.png', (555, 260)),
+
+        PadSprite('images/vertical_pads.png', (0, 250)),
+        PadSprite('images/vertical_pads.png', (0, 525)),
+        PadSprite('images/vertical_pads.png', (1024, 250)),
+        PadSprite('images/vertical_pads.png', (1024, 525)),
+        PadSprite('images/race_pads.png', (250, 0)),
+        PadSprite('images/race_pads.png', (760, 0)),
+        PadSprite('images/race_pads.png', (500, 0)),
+        PadSprite('images/race_pads.png', (250, 768)),
+        PadSprite('images/race_pads.png', (760, 768)),
+        PadSprite('images/race_pads.png', (500, 768))
+    ]
+    trophies = [Trophy((490, 50))]
+    return 4, pads, trophies, (490, 700), 30

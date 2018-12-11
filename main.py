@@ -25,7 +25,7 @@ class Main():
         pygame.mixer.music.load('My_Life_Be_Like.mp3')
 
         self.pads, self.trophies, self.car_pos, self.global_time = 0, 0, 0, 0
-        self.level = [levels.level1(), levels.level2()]
+        self.level = [levels.level1(), levels.level2(), levels.level3(), levels.level1(), levels.level2(), levels.level1(), levels.level2()]
 
         self.genetic_algorithm = genetic.GeneticAlgorithm(pool_size=pool)
 
@@ -59,7 +59,7 @@ class Main():
         directions = [0 for i in range(0, 3)]
         for pad in self.pads:
             # Allows for change in spread
-            scale = 30 * car.speed
+            scale = 40 * car.speed
             lhs, rhs = self.projection(car.position[0], car.position[1], car.orientation, scale)
 
             t_lhs, t_rhs = self.in_area(car, pad, lhs[0], lhs[1], rhs[0], rhs[1])
@@ -69,7 +69,7 @@ class Main():
                 directions[2] = t_rhs
             if sum(directions) == (t_lhs + t_rhs) and t_lhs > 0 and t_rhs > 0:
                 directions[0] = 1
-
+            
         return directions
 
     # Uses euclidean distance to calculate closest pad, returns pad and distance
@@ -99,9 +99,14 @@ class Main():
         return pad_number, distance
 
     def run_level(self, noevolve=False, genes=None, level=None):
-
+        if self.current_generation >= 200:
+            pygame.display.quit()
+            pygame.quit()
+            self.genetic_algorithm.display_report()
+            print("Exiting AI.")
+            sys.exit(0)
         if level is None:
-            self.pads, self.trophies, self.car_pos, self.global_time = self.level[random.randint(0, len(self.level) - 1)]
+            id, self.pads, self.trophies, self.car_pos, self.global_time = self.level[random.randint(0, len(self.level) - 1)]
 
         self.pad_group = pygame.sprite.RenderPlain(*self.pads)
         self.trophy_group = pygame.sprite.RenderPlain(*self.trophies)
@@ -115,12 +120,13 @@ class Main():
 
         # LOOP
         while True:
-
             for event in pygame.event.get():
                 if not hasattr(event, 'key'): continue
-                if event.key == K_ESCAPE:
-                    print("Exiting AI.")
+                if self.current_generation >= 200 or event.key == K_ESCAPE:
+                    pygame.display.quit()
+                    pygame.quit()
                     self.genetic_algorithm.display_report()
+                    print("Exiting AI.")
                     sys.exit(0)
 
             # Main iteration loop
@@ -130,7 +136,7 @@ class Main():
                     if self.win_condition:
                         pygame.mixer.music.stop()
                         self.genetic_algorithm.evaluate_performance(cars,
-                                                                    (self.trophies[0].rect.x, self.trophies[0].rect.y), noevolve=noevolve)
+                                                                    (self.trophies[0].rect.x, self.trophies[0].rect.y, id), noevolve=noevolve)
                         self.run_level(genes=genes)
                     car_data = cars[i].get_car_data()
                     distances = self.calculate_closest_pad_by_direction(cars[i])
@@ -174,7 +180,7 @@ class Main():
                         if len(set(list(zip([history.X for history in car.history], [history.Y for history in car.history])))) > 10:
                             car.alive = False
                     self.genetic_algorithm.evaluate_performance(cars,
-                                                                (self.trophies[0].rect.x, self.trophies[0].rect.y), noevolve=noevolve)
+                                                                (self.trophies[0].rect.x, self.trophies[0].rect.y, id), noevolve=noevolve)
                     self.current_generation += 1
                     self.run_level(genes=genes)
 
@@ -191,7 +197,7 @@ class Main():
             if len(car_group) == 0:
                 # win_condition = False
                 self.genetic_algorithm.evaluate_performance(cars,
-                                                            (self.trophies[0].rect.x, self.trophies[0].rect.y), noevolve=noevolve)
+                                                            (self.trophies[0].rect.x, self.trophies[0].rect.y, id), noevolve=noevolve)
                 self.current_generation += 1
                 self.run_level(genes=genes)
 
