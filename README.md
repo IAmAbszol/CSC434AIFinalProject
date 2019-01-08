@@ -58,6 +58,8 @@ automatically load the newly created model into the program and create it's part
 the initial gene set found.
 </p>
 
+![](demo.gif)
+
 <h3>Closing Remarks</h3>
 <p>The overall entirety of the project has placed a great deal of interest into investing more time into this project. 
 By building a successful system, many of the internals are lacking a deal of structure as continuous hacking and rebuilding had to occur, all in the sake
