@@ -10,7 +10,7 @@ The capstone project using Artificially Intelligent systems.
 
 <h3>Dependencies</h3>
 <i>requirements.txt also takes care of all required pip dependencies</i>
-<i>The project was developed on a UNIX system running Ubuntu 18,04</i>
+<i>The project was developed on a UNIX system running Ubuntu 18.04</i>
 <table>
 	<tr>
 		<th>Application/Module</td>
